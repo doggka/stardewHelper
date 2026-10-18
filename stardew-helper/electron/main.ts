@@ -1,6 +1,9 @@
 import { app, BrowserWindow, ipcMain, shell, dialog } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
+import { DEFAULT_ROOT, listSaves, readSaveById } from './saves';
+import { detectGame, listMods } from './game';
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
 const ROOT = path.join(__dirname, '..');
@@ -77,6 +80,68 @@ function registerIpc() {
     });
     return r.canceled ? null : r.filePaths[0];
   });
+
+  ipcMain.handle('saves:roots', () => getRoots());
+  ipcMain.handle('saves:addRoot', (_e, p: string) => {
+    const roots = getRoots();
+    if (p && !roots.includes(p)) roots.push(p);
+    setRoots(roots);
+    return roots;
+  });
+  ipcMain.handle('saves:removeRoot', (_e, p: string) => {
+    const roots = getRoots().filter((r) => r !== p);
+    setRoots(roots);
+    return roots;
+  });
+  ipcMain.handle('saves:list', () => listSaves(getRoots()));
+  ipcMain.handle('saves:read', (_e, id: string) => readSaveById(getRoots(), id));
+
+  ipcMain.handle('game:detect', () => detectGame());
+  ipcMain.handle('game:mods', () => listMods(detectGame()));
+  ipcMain.handle('game:runBootstrap', () => {
+    const script = path.join(ROOT, 'install-mods.ps1');
+    if (!fs.existsSync(script)) return { started: false, error: 'install-mods.ps1 не найден рядом с приложением' };
+    try {
+      // отдельное окно PowerShell: установка идёт на глазах, а не молча в фоне
+      spawn('powershell.exe', ['-NoExit', '-ExecutionPolicy', 'Bypass', '-File', script], {
+        detached: true,
+        stdio: 'ignore',
+      }).unref();
+      return { started: true };
+    } catch (err) {
+      return { started: false, error: String(err) };
+    }
+  });
 }
 
-export { fileURLToPath };
+/* ---- список папок с сейвами, переживает перезапуск ---- */
+
+function rootsFile(): string {
+  return path.join(app.getPath('userData'), 'save-roots.json');
+}
+
+function getRoots(): string[] {
+  let saved: string[] = [];
+  try {
+    saved = JSON.parse(fs.readFileSync(rootsFile(), 'utf8'));
+  } catch {
+    saved = [];
+  }
+  const roots = Array.isArray(saved) ? saved.slice() : [];
+  if (!roots.includes(DEFAULT_ROOT)) roots.unshift(DEFAULT_ROOT);
+  return roots.filter((r) => {
+    try {
+      return fs.statSync(r).isDirectory();
+    } catch {
+      return false;
+    }
+  });
+}
+
+function setRoots(roots: string[]): void {
+  try {
+    fs.writeFileSync(rootsFile(), JSON.stringify(roots, null, 1), 'utf8');
+  } catch {
+    /* не смогли сохранить — не критично, просто спросим снова */
+  }
+}
