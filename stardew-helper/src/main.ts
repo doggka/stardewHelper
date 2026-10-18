@@ -1,8 +1,8 @@
 import './ui/theme.css';
 import { DOW, SEASON_RU } from './data/constants';
-import { S, load, save } from './state';
+import { S, load, progress, save } from './state';
 import { cartToday, dow, nextCart, setDone, totals } from './logic/status';
-import { filterBarHTML, openLoc } from './ui/html';
+import { esc, filterBarHTML, openLoc } from './ui/html';
 import { renderTrackerBody } from './screens/tracker';
 import { bridge, isDesktop, openExternal } from './bridge';
 
@@ -16,16 +16,30 @@ function trackerChrome(): string {
   const cartLine = DOW[dow(S.day)]
     + (today ? ' · <b>🛒 торговка здесь</b>' : nx !== null ? ' · 🛒 через ' + nx + ' дн.' : ' · 🛒 в этом сезоне всё');
 
-  const saveChip = S.save
-    ? '<div class="savechip">🌱 ' + S.save.farmName + ' · ' + SEASON_RU[S.save.season].toLowerCase() + ', день ' + S.save.day
-      + '<button data-act="resync">Обновить</button><button data-act="chooseSave">Сменить</button></div>'
-    : isDesktop
-      ? '<div class="savechip" style="background:#2a241c;border-color:var(--line);color:var(--dim)">ручной режим'
-        + '<button data-act="chooseSave">Выбрать сейв</button></div>'
-      : '';
+  // Отдельная строка: какой сейв открыт и что с ним можно сделать.
+  // Раньше это были мелкие кнопки внутри плотного ряда контролов — их не замечали.
+  const manualCount = Object.keys(progress().checked).length;
+  const savedCount = S.save ? Object.values(S.save.progress).reduce((a, x) => a + x.length, 0) : 0;
+  const saveBar = isDesktop
+    ? '<div class="savebar' + (S.save ? '' : ' manual') + '">'
+      + (S.save
+          ? '<span class="sb-name">🌱 ' + esc(S.save.farmName) + '</span>'
+            + '<span class="sb-meta">' + esc(S.save.playerName) + ' · ' + SEASON_RU[S.save.season].toLowerCase()
+            + ', день ' + S.save.day + ', год ' + S.save.year + '</span>'
+            + '<span class="sb-meta" title="сколько отметок пришло из сейва при импорте">'
+            + 'отмечено ' + manualCount + ' (из сейва ' + savedCount + ')</span>'
+          : '<span class="sb-name">Режим без сейва</span>'
+            + '<span class="sb-meta">галочки ставишь вручную, отмечено ' + manualCount + '</span>')
+      + '<span class="sb-sp"></span>'
+      + (S.save ? '<button data-act="resync">↻ Обновить из сейва</button>' : '')
+      + '<button data-act="chooseSave">' + (S.save ? 'Сменить сейв' : 'Выбрать сейв') + '</button>'
+      + '<button data-act="resetAll" class="danger">Начать заново</button>'
+      + '</div>'
+    : '';
 
   return '<header>'
     + '<h1>Узелки Общественного центра <small>— закрыть за 1-й год</small></h1>'
+    + saveBar
     + '<div class="row">'
     + '<div class="ctl"><label>Сезон</label>'
     + '<select id="season">'
@@ -37,13 +51,13 @@ function trackerChrome(): string {
     + '<button data-w="rain"' + (S.weather === 'rain' ? ' class="on"' : '') + '>☔ Дождь</button>'
     + '</div></div>'
     + '<div class="cartday">' + cartLine + '</div>'
-    + saveChip
     + '<div class="ctl" style="flex:1;min-width:160px"><label>Узелки</label>'
     + '<span style="font-variant-numeric:tabular-nums">' + t.ok + '/' + t.n + '</span>'
     + '<div class="bar"><i style="width:' + (t.ok / t.n * 100) + '%"></i></div></div>'
     + '<div class="ctl"><input type="search" id="q" placeholder="предмет: нужен или нет?" style="width:180px" value="' + (S.q || '').replace(/"/g, '&quot;') + '"></div>'
     + '<div class="ctl"><button data-act="export">Экспорт</button><button data-act="import">Импорт</button>'
-    + (isDesktop ? '<button data-act="mods">Моды</button>' : '') + '<button data-act="reset">Сброс</button></div>'
+    + (isDesktop ? '<button data-act="mods">Моды</button>' : '')
+    + '<button data-act="reset">Сбросить галочки</button></div>'
     + '</div>'
     + '<div class="tabs" id="tabs">'
     + [['todo', '⚠ Не продолбать'], ['rooms', 'Комнаты'], ['plan', 'План по сезонам'], ['cart', '🛒 Торговка'], ['avail', 'Доступно сейчас']]
@@ -169,11 +183,27 @@ async function action(name: string, el: HTMLElement): Promise<void> {
     return;
   }
   if (name === 'reset') {
-    if (confirm('Сбросить прогресс этого сейва?')) {
+    if (confirm('Снять все галочки у этого сейва? Сам сейв и выбор фермы останутся.')) {
       S.bySave[S.saveId] = { checked: {} };
       save();
       render();
     }
+    return;
+  }
+  if (name === 'resetAll') {
+    if (!confirm('Стереть вообще всё: выбранный сейв, галочки по всем фермам, фильтры?\n\nСохранения игры это не затронет — приложение в них не пишет.')) return;
+    S.bySave = {};
+    S.saveId = 'manual';
+    S.save = null;
+    S.filters = [];
+    S.hideDone = false;
+    S.locFilter = null;
+    S.q = '';
+    S.tab = 'todo';
+    S.modsSeen = false;
+    S.screen = 'welcome';
+    save();
+    render();
     return;
   }
   if (name === 'chooseSave') { S.screen = 'welcome'; save(); render(); return; }

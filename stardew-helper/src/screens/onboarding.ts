@@ -81,6 +81,7 @@ async function welcomeHTML(): Promise<string> {
     + '<div class="actions">'
     + '<button data-act="addRoot">Указать другую папку</button>'
     + '<button data-act="manual">Без сейва, вручную</button>'
+    + '<button data-act="resetAll" class="danger">Начать заново</button>'
     + '</div>'
     + '<p class="hint">Приложение только читает сохранения. В файлы игры оно не пишет ничего.</p>'
     + '</div>';

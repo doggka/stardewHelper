@@ -8,6 +8,13 @@ import { detectGame, listMods } from './game';
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
 const ROOT = path.join(__dirname, '..');
 
+// Запуск с отладочным портом уводит приложение в отдельный профиль.
+// Иначе проверки затирают реальное состояние пользователя: выбранный сейв,
+// галочки, фильтры — всё это живёт в localStorage профиля.
+if (process.argv.some((a) => a.startsWith('--remote-debugging-port'))) {
+  app.setPath('userData', app.getPath('userData') + ' (debug)');
+}
+
 let win: BrowserWindow | null = null;
 
 function createWindow() {
