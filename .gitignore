@@ -11,4 +11,3 @@ dist/
 dist-electron/
 release/
 .vite/
-build/icon-256.png
