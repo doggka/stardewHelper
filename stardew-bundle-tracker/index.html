@@ -75,7 +75,17 @@ ul.items{list-style:none;margin:7px 0 0;padding:0;display:flex;flex-direction:co
   padding:5px 7px;border-radius:6px;margin-top:4px}
 .dot{cursor:pointer;color:var(--dim);font-size:11px;border:1px solid var(--line);
   border-radius:4px;padding:0 4px;background:#342c22}
-.legend{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 14px;font-size:11.5px;color:var(--dim);align-items:center}
+.legend{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px;font-size:11.5px;color:var(--dim);align-items:center}
+.legend .b{cursor:pointer;user-select:none;opacity:.55;border-style:dashed}
+.legend .b.sel{opacity:1;border-style:solid;box-shadow:0 0 0 2px rgba(232,192,90,.55)}
+.legend .b.zero{opacity:.22;cursor:default;border-style:dotted}
+.legend .cnt{font-weight:700;margin-left:3px}
+.fbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px;font-size:12px;color:var(--dim)}
+.fbar .pill{background:#3a3127;border:1px solid var(--gold);color:var(--ink);
+  border-radius:9px;padding:2px 9px;font-size:12px}
+.fbar button{padding:3px 9px;font-size:12px}
+.fbar label{display:flex;gap:5px;align-items:center;cursor:pointer}
+.fbar input{accent-color:var(--gold);width:14px;height:14px}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
 .panel h2{margin:0 0 8px;font-size:15px;color:var(--gold)}
 .panel h2 em{color:var(--dim);font-style:normal;font-size:12px;font-weight:400}
@@ -97,9 +107,16 @@ ul.items{list-style:none;margin:7px 0 0;padding:0;display:flex;flex-direction:co
 table.t{width:100%;border-collapse:collapse;font-size:12.5px}
 table.t th,table.t td{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:top}
 table.t th{background:#342c22;color:var(--gold);font-weight:600}
-.verdict{border:2px solid var(--gold);background:#352c1c}
-.verdict .big{font-size:16px;font-weight:600}
-.no{border-color:#6a6a6a;background:#2a2a2a}
+.verdict{border-width:2px;border-style:solid}
+.verdict .big{font-size:17px;font-weight:700}
+.verdict.yes{border-color:var(--now);background:#1f3320;box-shadow:0 0 0 1px rgba(93,187,99,.3) inset}
+.verdict.yes h2{color:#9ce89f}
+.verdict.nope{border-color:#5f6b72;background:#242a2d}
+.verdict.nope h2{color:#c3d2da}
+.verdict.unknown{border-color:var(--last);background:#3a2714}
+.verdict.unknown h2{color:#ffc48c}
+.sugg{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.sugg button{background:#4a3a14;border-color:#9c7a2a;color:#ffdc96}
 /* модалка локации */
 .mask{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:50;display:flex;
   align-items:center;justify-content:center;padding:14px}
@@ -153,15 +170,7 @@ table.t th{background:#342c22;color:var(--gold);font-weight:600}
 </header>
 
 <main>
-  <div class="legend">
-    <span class="b now">можно сейчас</span>
-    <span class="b cond">при условии</span>
-    <span class="b later">позже в этом году</span>
-    <span class="b last">последний сезон сбора</span>
-    <span class="b cart">только у торговки</span>
-    <span class="b past">в Y1 уже никак</span>
-    <span>· 📍 локация и 🔒 условие — кликабельны · «?» — где добывать</span>
-  </div>
+  <div id="filters"></div>
   <div id="view"></div>
 </main>
 
@@ -171,6 +180,7 @@ table.t th{background:#342c22;color:var(--gold);font-weight:600}
   на ru.stardewvalleywiki.com · стандартный (не смешанный) набор узелков · прогресс хранится локально
 </div>
 
+<script src="data-items.js"></script>
 <script>
 const SP=0,SU=1,FA=2,WI=3;
 const SEASON_RU=['Весна','Лето','Осень','Зима'];
@@ -531,9 +541,11 @@ const GATES=[
 
 /* ===================== СОСТОЯНИЕ ===================== */
 const KEY='sdv-bundles-v1';
-let S={checked:{},season:0,day:1,weather:'sun',tab:'todo',q:'',y1guarantee:false};
+let S={checked:{},season:0,day:1,weather:'sun',tab:'todo',q:'',y1guarantee:false,
+       filters:[],hideDone:false,locFilter:null};
 try{Object.assign(S,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){}
 if(!S.day||S.day<1||S.day>28)S.day=1;
+if(!Array.isArray(S.filters))S.filters=[];
 const save=()=>localStorage.setItem(KEY,JSON.stringify(S));
 
 const ALL=[];
@@ -578,7 +590,8 @@ function st(it){
   if(it.w && it.w!==S.weather) cond.push(it.w==='rain'?'нужен дождь':'нужна ясная погода');
   if(it.t) cond.push(it.t);
   if(it.c) cond.push(it.c);
-  const hard=(it.w&&it.w!==S.weather)||!!it.c;
+  const gated=it.loc&&LOC[it.loc]&&LOC[it.loc].gate;
+  const hard=(it.w&&it.w!==S.weather)||!!it.c||!!gated;
   if(!it.s) return {lvl:(hard||cond.length)?'cond':'now',cond,last:false};
   const inS=it.s.indexOf(cur)>=0, later=it.s.some(x=>x>cur);
   if(inS) return {lvl:hard?'cond':(cond.length?'cond':'now'),cond,last:!later};
@@ -589,6 +602,50 @@ function st(it){
   return {lvl:'past',cond:[ci.no].concat(cond),last:false};
 }
 const LVL={now:'можно сейчас',cond:'при условии',later:'позже',cart:'только у торговки',past:'в Y1 уже никак'};
+
+/* ===================== ФИЛЬТРЫ ===================== */
+const LVL_ORDER=['now','cond','later','last','cart','past'];
+const LVL_NAME={now:'можно сейчас',cond:'при условии',later:'позже в этом году',
+  last:'последний сезон сбора',cart:'только у торговки',past:'в Y1 уже никак'};
+/* «last» — не отдельный уровень, а флаг; разбираем отдельно */
+function lvlOf(it){const s=st(it);return s.last?['last',s.lvl]:[s.lvl]}
+function filterActive(){return S.filters.length>0||S.hideDone||!!S.locFilter}
+function visible(it){
+  if(S.hideDone&&done(it)) return false;
+  if(S.locFilter&&it.loc!==S.locFilter) return false;
+  if(!S.filters.length) return true;
+  const ls=lvlOf(it);
+  return S.filters.some(f=>ls.indexOf(f)>=0);
+}
+function countsByLvl(){
+  const c={};LVL_ORDER.forEach(k=>c[k]=0);
+  ALL.forEach(it=>{
+    if(it.bundle.room.extra||done(it)||bprog(it.bundle).ok) return;
+    lvlOf(it).forEach(k=>{if(c[k]!==undefined)c[k]++});
+  });
+  return c;
+}
+function renderFilters(){
+  const box=document.getElementById('filters');
+  if(S.tab==='plan'){box.innerHTML='';return}
+  const c=countsByLvl();
+  let h='<div class="legend">';
+  LVL_ORDER.forEach(k=>{
+    const sel=S.filters.indexOf(k)>=0, z=c[k]===0&&!sel;
+    h+='<span class="b '+k+(sel?' sel':'')+(z?' zero':'')+'" data-f="'+k+'">'
+      +LVL_NAME[k]+'<span class="cnt">'+c[k]+'</span></span>';
+  });
+  h+='<span>· 📍 локация и 🔒 условие — кликабельны · «?» — где добывать</span></div>';
+  h+='<div class="fbar"><label><input type="checkbox" id="hd" '+(S.hideDone?'checked':'')+'>скрыть собранное</label>';
+  if(S.locFilter&&LOC[S.locFilter]) h+='<span class="pill">📍 только: '+esc(LOC[S.locFilter].n)+'</span>';
+  if(filterActive()){
+    const tot=ALL.filter(i=>!i.bundle.room.extra).length;
+    const vis=ALL.filter(i=>!i.bundle.room.extra&&visible(i)).length;
+    h+='<span class="pill">показано '+vis+' из '+tot+'</span><button id="fclear">× сбросить фильтр</button>';
+  }
+  h+='</div>';
+  box.innerHTML=h;
+}
 
 const done=it=>!!S.checked[it.id];
 function bprog(b){
@@ -633,13 +690,15 @@ function itemHTML(it,showBundle){
 }
 
 function bundleHTML(b){
-  const p=bprog(b);
+  const p=bprog(b), vis=b.items.filter(visible);
   let h='<div class="bundle'+(p.ok?' done':'')+'"><h3>'+(p.ok?'✔ ':'')+esc(b.name)
     +'<span class="b g">'+p.c+'/'+p.n+(b.items&&b.items.length>b.slots?' (из '+b.items.length+')':'')+'</span></h3>'
     +'<div class="meta">Награда: '+esc(b.reward)+' · реально закрыть: '+SEASON_RU[b.earliest]+' Y1</div>'
     +'<div class="bar" style="margin-bottom:6px"><i style="width:'+(p.c/p.n*100)+'%"></i></div>';
   if(b.note) h+='<p class="note">'+b.note+'</p>';
-  h+='<ul class="items">'+b.items.map(i=>'<li>'+itemHTML(i,false)+'</li>').join('')+'</ul></div>';
+  h+='<ul class="items">'+vis.map(i=>'<li>'+itemHTML(i,false)+'</li>').join('')+'</ul>'
+    +(vis.length<b.items.length?'<p class="note" style="margin:6px 0 0">скрыто фильтром: '+(b.items.length-vis.length)+'</p>':'')
+    +'</div>';
   return h;
 }
 
@@ -654,6 +713,7 @@ function vaultHTML(r){
 
 function matchBundle(b){
   if(!b.items) return false;
+  if(!b.items.some(visible)) return false;
   if(S.q){const q=norm(S.q);
     if(norm(b.name).indexOf(q)<0 && !b.items.some(i=>norm(i.n).indexOf(q)>=0)) return false}
   return true;
@@ -661,7 +721,7 @@ function matchBundle(b){
 function renderRooms(){
   let h=searchVerdict();
   ROOMS.forEach(r=>{
-    if(r.vault){if(!S.q)h+=vaultHTML(r);return}
+    if(r.vault){if(!S.q&&!filterActive())h+=vaultHTML(r);return}
     const bs=r.bundles.filter(matchBundle); if(!bs.length) return;
     const ok=r.bundles.filter(b=>bprog(b).ok).length;
     h+='<div class="panel"><h2 class="room">'+esc(r.name)
@@ -672,15 +732,76 @@ function renderRooms(){
   return h||'<p class="empty">Ничего не найдено.</p>';
 }
 
-/* --------- поиск: карточка-вердикт --------- */
-const norm=s=>String(s).toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ').trim();
+/* --------- поиск: нормализация, опечатки, раскладка --------- */
+const norm=s=>String(s).toLowerCase().replace(/ё/g,'е').replace(/[«»"'`]/g,'')
+  .replace(/[‐-―]/g,'-').replace(/\s+/g,' ').trim();
+const EN='qwertyuiop[]asdfghjkl;\'zxcvbnm,.';
+const RU='йцукенгшщзхъфывапролджэячсмитьбю';
+function layout(s){let o='';for(const ch of String(s).toLowerCase()){
+  const i=EN.indexOf(ch); o+= i>=0?RU[i]:ch} return o}
+function lev(a,b){
+  if(a===b) return 0;
+  if(Math.abs(a.length-b.length)>3) return 99;
+  let prev=[],cur=[];
+  for(let j=0;j<=b.length;j++) prev[j]=j;
+  for(let i=1;i<=a.length;i++){
+    cur=[i];
+    for(let j=1;j<=b.length;j++){
+      cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    }
+    prev=cur;
+  }
+  return prev[b.length];
+}
+const BUNDLE_NAMES=Array.from(new Set(ALL.map(i=>i.n)));
+const KNOWN=(window.SDV_NAMES||[]).concat(BUNDLE_NAMES);
+const KNOWN_NORM=KNOWN.map(norm);
+function knownItem(q){const i=KNOWN_NORM.indexOf(q);return i>=0?KNOWN[i]:null}
+function suggest(q){
+  const lim=q.length<=5?1:(q.length<=9?2:3);
+  const out=[];
+  for(let i=0;i<KNOWN.length;i++){
+    const d=lev(q,KNOWN_NORM[i]);
+    if(d<=lim) out.push([KNOWN[i],d]);
+  }
+  out.sort((a,b)=>a[1]-b[1]||a[0].length-b[0].length);
+  const seen={},res=[];
+  out.forEach(x=>{if(!seen[x[0]]){seen[x[0]]=1;res.push(x[0])}});
+  return res.slice(0,6);
+}
+function suggHTML(list){
+  if(!list.length) return '';
+  return '<div class="sugg">'+list.map(n=>'<button data-sugg="'+esc(n)+'">'+esc(n)+'</button>').join('')+'</div>';
+}
+
 function searchVerdict(){
   const q=norm(S.q); if(!q) return '';
-  const hits=ALL.filter(i=>norm(i.n).indexOf(q)>=0);
+  let hits=ALL.filter(i=>norm(i.n).indexOf(q)>=0);
   if(!hits.length){
-    return '<div class="panel no"><h2>⚪ «'+esc(S.q)+'» — для узелков не нужен</h2>'
-      +'<p class="note">Такого предмета нет ни в одном узелке Общественного центра. Можно спокойно продавать или использовать в готовке.</p>'
-      +'<a href="'+wikiUrl(S.q)+'" target="_blank" rel="noopener">Открыть «'+esc(S.q)+'» на вики ↗</a></div>';
+    /* точное попадание в базу предметов игры */
+    const exact=knownItem(q);
+    if(exact) return '<div class="panel verdict nope"><h2>⚪ <span class="big">'+esc(exact)+'</span> — для узелков НЕ нужен</h2>'
+      +'<p class="note" style="font-style:normal">Такой предмет в игре есть, но ни в один узелок Общественного центра он не входит. Можно спокойно продавать, дарить или готовить.</p>'
+      +'<a href="'+wikiUrl(exact)+'" target="_blank" rel="noopener">статья на вики ↗</a></div>';
+    /* неправильная раскладка */
+    const lay=norm(layout(q));
+    if(lay!==q){
+      const byLay=ALL.filter(i=>norm(i.n).indexOf(lay)>=0);
+      const kLay=knownItem(lay);
+      if(byLay.length||kLay){
+        const pick=byLay.length?byLay[0].n:kLay;
+        return '<div class="panel verdict unknown"><h2>⌨ Похоже, раскладка не та</h2>'
+          +'<p class="note" style="font-style:normal">«'+esc(S.q)+'» в кириллице — это <b>'+esc(lay)+'</b>.</p>'
+          +suggHTML([pick])+'</div>';
+      }
+    }
+    /* опечатки */
+    const sg=suggest(q);
+    if(sg.length) return '<div class="panel verdict unknown"><h2>❓ Не нашёл предмет «'+esc(S.q)+'»</h2>'
+      +'<p class="note" style="font-style:normal">Возможно, опечатка. Похожие названия:</p>'+suggHTML(sg)+'</div>';
+    return '<div class="panel verdict unknown"><h2>❓ Не нашёл предмет «'+esc(S.q)+'»</h2>'
+      +'<p class="note" style="font-style:normal">Ни в узелках, ни в базе предметов такого названия нет — проверь написание.</p>'
+      +'<a href="'+wikiUrl(S.q)+'" target="_blank" rel="noopener">поискать на вики ↗</a></div>';
   }
   const names=Array.from(new Set(hits.map(i=>i.n)));
   let h='';
@@ -693,7 +814,7 @@ function searchVerdict(){
         +', '+(b.items.length>b.slots?'на выбор '+b.slots+' из '+b.items.length:'обязательный, '+b.slots+' из '+b.slots)
         +(done(i)?' — <b style="color:#8ddc8d">уже отмечен ✔</b>':'')+'</li>';
     }).join('');
-    h+='<div class="panel verdict"><h2><span class="big">'+esc(nm)+'</span> — нужен для узелков</h2>'
+    h+='<div class="panel verdict yes"><h2>✅ <span class="big">'+esc(nm)+'</span> — НУЖЕН для узелков</h2>'
       +'<ul style="margin:0 0 8px;padding-left:18px;font-size:13px">'+needs+'</ul>'
       +'<div class="badges" style="margin-bottom:8px"><span class="b '+s.lvl+'">'+LVL[s.lvl]+'</span>'
       +(s.last?'<span class="b last">⏳ последний сезон сбора</span>':'')
@@ -711,7 +832,7 @@ function searchVerdict(){
 function flat(arr){return '<ul class="flat">'+arr.map(i=>'<li>'+itemHTML(i,true)+'</li>').join('')+'</ul>'}
 
 function renderTodo(){
-  const open=ALL.filter(i=>!done(i)&&!i.bundle.room.extra&&!bprog(i.bundle).ok);
+  const open=ALL.filter(i=>!done(i)&&!i.bundle.room.extra&&!bprog(i.bundle).ok&&visible(i));
   const urgent=[],lost=[],cart=[],chain=[];
   open.forEach(i=>{const s=st(i);
     if(s.lvl==='past') lost.push(i);
@@ -733,7 +854,7 @@ function renderTodo(){
 }
 
 function renderAvail(){
-  const arr=ALL.filter(i=>!done(i)&&!i.bundle.room.extra&&!bprog(i.bundle).ok)
+  const arr=ALL.filter(i=>!done(i)&&!i.bundle.room.extra&&!bprog(i.bundle).ok&&visible(i))
     .filter(i=>{const l=st(i).lvl;return l==='now'||l==='cond'})
     .sort((a,b)=>(st(a).lvl==='now'?0:1)-(st(b).lvl==='now'?0:1));
   return searchVerdict()+'<div class="panel"><h2>Доступно сейчас <em>— '+SEASON_RU[S.season]+', '
@@ -743,7 +864,7 @@ function renderAvail(){
 
 function renderCart(){
   const today=cartToday(), nx=nextCart();
-  const open=ALL.filter(i=>!done(i)&&!i.bundle.room.extra&&!bprog(i.bundle).ok);
+  const open=ALL.filter(i=>!done(i)&&!i.bundle.room.extra&&!bprog(i.bundle).ok&&visible(i));
   const buy=[],cant=[];
   open.forEach(i=>{const ci=cartInfo(i); if(ci.price)buy.push([i,ci.price]); else cant.push([i,ci.no])});
   const prio=i=>{const l=st(i).lvl;return l==='cart'?0:(i.warn?1:(l==='past'?0:(l==='later'?2:3)))};
@@ -818,6 +939,7 @@ function openLoc(key){
    +'<p style="font-size:13.5px">'+esc(L.how)+'</p>'
    +(L.img?'<img class="shot" src="'+L.img+'" alt="'+esc(L.n)+'">':'')
    +'<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'
+   +(ALL.some(i=>i.loc===key)?'<button data-locfilter="'+key+'">Показать все предметы отсюда</button>':'')
    +'<a href="'+wikiUrl(L.wiki)+'" target="_blank" rel="noopener"><button>Статья на вики ↗</button></a>'
    +'<button id="closemask">Закрыть</button></div></div>';
   document.body.appendChild(d);
@@ -836,6 +958,7 @@ function render(){
     +(today?' · <b>🛒 торговка здесь</b>':(nx!==null?' · 🛒 через '+nx+' дн.':' · 🛒 в этом сезоне всё'));
   document.querySelectorAll('#weather button').forEach(b=>b.classList.toggle('on',b.dataset.w===S.weather));
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tab));
+  renderFilters();
   view.innerHTML = S.tab==='rooms'?renderRooms(): S.tab==='plan'?renderPlan():
                    S.tab==='cart'?renderCart(): S.tab==='avail'?renderAvail(): renderTodo();
   window.scrollTo(0,sy);
@@ -843,12 +966,23 @@ function render(){
 
 document.addEventListener('change',e=>{
   if(e.target.id==='y1g'){S.y1guarantee=e.target.checked;save();render();return}
+  if(e.target.id==='hd'){S.hideDone=e.target.checked;save();render();return}
   const id=e.target.dataset.chk; if(!id) return;
   if(e.target.checked) S.checked[id]=1; else delete S.checked[id];
   save(); render();
 });
 document.addEventListener('click',e=>{
   const d=e.target.dataset;
+  if(e.target.id==='fclear'){S.filters=[];S.hideDone=false;S.locFilter=null;save();render();return}
+  if(d.f!==undefined){
+    if(e.target.classList.contains('zero'))return;
+    const i=S.filters.indexOf(d.f);
+    if(i>=0)S.filters.splice(i,1); else S.filters.push(d.f);
+    save();render();return}
+  if(d.locfilter){S.locFilter=d.locfilter;S.tab='rooms';S.filters=[];
+    const m=document.getElementById('mask'); if(m)m.remove();
+    save();render();window.scrollTo(0,0);return}
+  if(d.sugg){S.q=d.sugg;document.getElementById('q').value=d.sugg;save();render();return}
   if(d.loc){openLoc(d.loc);return}
   if(d.src!==undefined){e.target.closest('.item').classList.toggle('open');return}
   if(d.w){S.weather=d.w;save();render();return}
