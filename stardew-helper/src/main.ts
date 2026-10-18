@@ -190,10 +190,12 @@ async function action(name: string, el: HTMLElement): Promise<void> {
 // прогонять состояния, не кликая по интерфейсу.
 if (import.meta.env.DEV) {
   void (async () => {
-    const [{ ALL, ROOMS }, status, filters] = await Promise.all([
+    const [state, status, filters] = await Promise.all([
       import('./state'), import('./logic/status'), import('./logic/filters'),
     ]);
-    (window as unknown as Record<string, unknown>).__dbg = { S, ALL, ROOMS, ...status, ...filters, render, save };
+    (window as unknown as Record<string, unknown>).__dbg = {
+      ...status, ...filters, S, ALL: state.ALL, ROOMS: state.ROOMS, render, save,
+    };
   })();
 }
 

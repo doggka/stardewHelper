@@ -20,6 +20,10 @@ function createWindow() {
     frame: false,
     backgroundColor: '#1d1a16',
     title: 'Stardew Helper',
+    // Иконку окна и панели задач ставим здесь. Вшить её в сам .exe нельзя:
+    // для этого нужен winCodeSign, который не распаковывается без прав
+    // администратора или режима разработчика Windows.
+    icon: path.join(ROOT, 'dist', 'icon-256.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -99,8 +103,13 @@ function registerIpc() {
   ipcMain.handle('game:detect', () => detectGame());
   ipcMain.handle('game:mods', () => listMods(detectGame()));
   ipcMain.handle('game:runBootstrap', () => {
-    const script = path.join(ROOT, 'install-mods.ps1');
-    if (!fs.existsSync(script)) return { started: false, error: 'install-mods.ps1 не найден рядом с приложением' };
+    // В собранном приложении скрипт лежит в resources рядом с asar:
+    // из самого asar PowerShell читать не умеет.
+    const candidates = app.isPackaged
+      ? [path.join(process.resourcesPath, 'install-mods.ps1')]
+      : [path.join(ROOT, 'install-mods.ps1')];
+    const script = candidates.find((p) => fs.existsSync(p));
+    if (!script) return { started: false, error: 'install-mods.ps1 не найден: ' + candidates.join(', ') };
     try {
       // отдельное окно PowerShell: установка идёт на глазах, а не молча в фоне
       spawn('powershell.exe', ['-NoExit', '-ExecutionPolicy', 'Bypass', '-File', script], {
