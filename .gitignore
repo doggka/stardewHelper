@@ -3,4 +3,11 @@ desktop.ini
 .DS_Store
 *.log
 *.tmp
+
+# тулчейн и сборка
+.toolchain/
 node_modules/
+dist/
+dist-electron/
+release/
+.vite/
