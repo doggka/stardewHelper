@@ -76,9 +76,10 @@ ul.items{list-style:none;margin:7px 0 0;padding:0;display:flex;flex-direction:co
 .dot{cursor:pointer;color:var(--dim);font-size:11px;border:1px solid var(--line);
   border-radius:4px;padding:0 4px;background:#342c22}
 .legend{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px;font-size:11.5px;color:var(--dim);align-items:center}
-.legend .b{cursor:pointer;user-select:none;opacity:.55;border-style:dashed}
-.legend .b.sel{opacity:1;border-style:solid;box-shadow:0 0 0 2px rgba(232,192,90,.55)}
-.legend .b.zero{opacity:.22;cursor:default;border-style:dotted}
+.legend .b{cursor:pointer;user-select:none;border-style:dashed}
+.legend .b:hover{border-style:solid}
+.legend .b.sel{border-style:solid;box-shadow:0 0 0 2px var(--gold);font-weight:700}
+.legend .b.zero{opacity:.3;cursor:default;border-style:dotted}
 .legend .cnt{font-weight:700;margin-left:3px}
 .fbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px;font-size:12px;color:var(--dim)}
 .fbar .pill{background:#3a3127;border:1px solid var(--gold);color:var(--ink);
@@ -280,12 +281,12 @@ const ROOMS=[
   {n:'Острая ягода',s:[SU],src:'Собирательство летом; пещера на ферме (летучие мыши)',alsoAny:1},
   {n:'Душистый горошек',s:[SU],src:'Собирательство летом'}]},
  {id:'fall-forage',name:'Узелок осенних дикоросов',slots:4,reward:'Осенние семена (30)',items:[
-  {n:'Шампиньон',s:[SP,FA],src:'Собирательство осенью; весной и осенью в тайном лесу; пещера на ферме (грибы); подсочник на грибном дереве',alsoAny:1},
+  {n:'Шампиньон',s:[SP,FA],locS:{0:'woods'},src:'ОСЕНЬЮ — обычное собирательство где угодно. ВЕСНОЙ — только в тайном лесу (нужен стальной топор). Плюс круглый год: пещера на ферме (грибы) и подсочник на грибном дереве',alsoAny:1},
   {n:'Дикая слива',s:[FA],src:'Собирательство осенью; пещера на ферме (летучие мыши)',alsoAny:1},
   {n:'Фундук',s:[FA],src:'Собирательство осенью'},
   {n:'Ежевика',s:[FA],src:'Собирательство осенью (дни 8–11 — кусты); пещера на ферме (летучие мыши)',alsoAny:1}]},
  {id:'winter-forage',name:'Узелок зимних дикоросов',slots:4,reward:'Зимние семена (30)',items:[
-  {n:'Зимний корень',s:[WI],src:'Вскапывание земли и клеток с артефактами зимой; синие слаймы в шахте 41–79',alsoAny:1,loc:'mine'},
+  {n:'Зимний корень',s:[WI],src:'ЗИМОЙ — вскапывание земли и клеток с артефактами где угодно. Круглый год — синие слаймы в шахте 41–79',alsoAny:1},
   {n:'Кристальный фрукт',s:[WI],src:'Собирательство зимой; пыльные духи в шахте 41–79',alsoAny:1},
   {n:'Снежный батат',s:[WI],src:'Вскапывание земли и клеток с артефактами зимой'},
   {n:'Крокус',s:[WI],src:'Собирательство зимой'}]},
@@ -293,12 +294,12 @@ const ROOMS=[
   {n:'Древесина',q:99,s:null,src:'Вырубка деревьев и веток топором; столярная мастерская'},
   {n:'Древесина',q:99,s:null,src:'Вырубка деревьев и веток топором; столярная мастерская'},
   {n:'Камень',q:99,s:null,src:'Разрушение камней киркой; столярная мастерская'},
-  {n:'Твердая древесина',q:10,s:null,c:'нужен улучшенный топор',src:'Большие пни и брёвна улучшенным топором; коробки в шахте; красные деревья в тайном лесу',loc:'woods'}]},
+  {n:'Твердая древесина',q:10,s:null,c:'нужен улучшенный топор',src:'Большие пни и брёвна на ферме улучшенным топором; коробки в шахте; красные деревья в тайном лесу'}]},
  {id:'exotic',name:'Узелок заготовки экзотики',slots:5,reward:'«Дары осени» (5)',items:[
   {n:'Кокос',s:null,loc:'desert',e:SU,src:'Собирательство в пустыне; встряхивание пальм в пустыне или на Имбирном острове'},
   {n:'Плод кактуса',s:null,loc:'oasis',e:SU,src:'Собирательство в пустыне; Оазис'},
   {n:'Пещерная морковка',s:null,loc:'mine',src:'Разрушение коробок и копание почвы в шахте'},
-  {n:'Красный гриб',s:[SU,FA],loc:'woods',src:'Собирательство в шахте; летом и осенью в тайном лесу; пещера на ферме (грибы); подсочник на грибном дереве',alsoAny:1},
+  {n:'Красный гриб',s:[SU,FA],loc:'mine',src:'Шахта — круглый год, топор не нужен. Плюс тайный лес летом и осенью; пещера на ферме (грибы); подсочник на грибном дереве',alsoAny:1},
   {n:'Фиолетовый гриб',s:null,loc:'mine',c:'шахта 81+',e:SU,src:'Собирательство в шахте; пещера на ферме (грибы); осенью на лесной ферме'},
   {n:'Кленовый сироп',s:null,c:'подсочник на клене (9 дней)',src:'Подсочник на клене'},
   {n:'Дубовая смола',s:null,c:'подсочник на дубе (7 дней)',src:'Подсочник на дубе; призрачный череп'},
@@ -434,12 +435,12 @@ const ROOMS=[
   {n:'Суши-роллы',s:null,c:'готовка (кухня = дом ур. 1)',src:'Готовка. Рецепт: «Королева соуса» или покупка в салуне'},
   {n:'Яичница',s:null,c:'готовка (кухня = дом ур. 1)',src:'Готовка'}]},
  {id:'dye',name:'Красочный узелок',slots:6,reward:'Экстрактор семян (1)',items:[
-  {n:'Красный гриб',s:[SU,FA],loc:'woods',src:'Собирательство в шахте; летом и осенью в тайном лесу; пещера на ферме (грибы); подсочник на грибном дереве',alsoAny:1},
-  {n:'Морской еж',s:null,loc:'beach_east',src:'Собирательство на восточной части пляжа после ремонта моста за 300 древесины; любая часть пляжа при летнем бонусе; пляжная ферма'},
+  {n:'Красный гриб',s:[SU,FA],loc:'mine',src:'Шахта — круглый год, топор не нужен. Плюс тайный лес летом и осенью; пещера на ферме (грибы); подсочник на грибном дереве',alsoAny:1},
+  {n:'Морской еж',s:null,loc:'beach_east',locS:{1:'beach'},src:'ЛЕТОМ — на любой части пляжа. В остальные сезоны — только восточная часть за мостом (чинится за 300 древесины). Плюс пляжная ферма круглый год'},
   {n:'Подсолнух',s:[SU,FA],src:'Летняя / осенняя культура (8 дней); семена у Пьера и в ДжоджаМарте'},
   {n:'Утиное перо',s:null,c:'большой курятник + утка (редкий дроп)',e:SU,src:'Утки'},
   {n:'Аквамарин',s:null,loc:'mine',src:'Месторождения аквамарина и коробки в шахте; сундуки с сокровищами на рыбалке'},
-  {n:'Красная капуста',s:[SU],e:SU,loc:'cart',
+  {n:'Красная капуста',s:[SU],e:SU,loc:'cart',c:'нужны семена — в Y1 только у торговки или дропом',
    warn:'ГЛАВНЫЙ блокер 1-го года. Семена у Пьера только со 2-го года. В Y1 только: странствующая торговка (пт/вс) или дроп со змеев, мумий и фиолетовых слаймов. Растёт 9 дней → посадить не позже ~19 лета. Проверяй торговку КАЖДУЮ пятницу и воскресенье.',
    src:'Летняя культура. Семена красной капусты продаются у Пьера начиная со 2-го года, у странствующей торговки, а также падают со змеев, мумий и фиолетовых слаймов'}]},
  {id:'field',name:'Исследовательский узелок',slots:4,reward:'Утилизационная машина (1)',items:[
@@ -584,13 +585,25 @@ function nextCart(){
   return null;
 }
 
-/* ===================== СТАТУС ===================== */
+/* ===================== СТАТУС =====================
+   locS — переопределение локации на конкретный сезон.
+   Например у шампиньона весной источник только тайный лес, а осенью — где угодно. */
+function effLoc(it){
+  if(it.locS && it.locS[S.season]!==undefined) return it.locS[S.season];
+  return it.loc||null;
+}
+function hasLoc(it,key){
+  if(it.loc===key) return true;
+  if(it.locS) for(const k in it.locS) if(it.locS[k]===key) return true;
+  return false;
+}
 function st(it){
   const cur=+S.season, cond=[];
   if(it.w && it.w!==S.weather) cond.push(it.w==='rain'?'нужен дождь':'нужна ясная погода');
   if(it.t) cond.push(it.t);
   if(it.c) cond.push(it.c);
-  const gated=it.loc&&LOC[it.loc]&&LOC[it.loc].gate;
+  const el=effLoc(it);
+  const gated=el&&LOC[el]&&LOC[el].gate;
   const hard=(it.w&&it.w!==S.weather)||!!it.c||!!gated;
   if(!it.s) return {lvl:(hard||cond.length)?'cond':'now',cond,last:false};
   const inS=it.s.indexOf(cur)>=0, later=it.s.some(x=>x>cur);
@@ -612,7 +625,7 @@ function lvlOf(it){const s=st(it);return s.last?['last',s.lvl]:[s.lvl]}
 function filterActive(){return S.filters.length>0||S.hideDone||!!S.locFilter}
 function visible(it){
   if(S.hideDone&&done(it)) return false;
-  if(S.locFilter&&it.loc!==S.locFilter) return false;
+  if(S.locFilter&&!hasLoc(it,S.locFilter)) return false;
   if(!S.filters.length) return true;
   const ls=lvlOf(it);
   return S.filters.some(f=>ls.indexOf(f)>=0);
@@ -633,7 +646,7 @@ function renderFilters(){
   LVL_ORDER.forEach(k=>{
     const sel=S.filters.indexOf(k)>=0, z=c[k]===0&&!sel;
     h+='<span class="b '+k+(sel?' sel':'')+(z?' zero':'')+'" data-f="'+k+'">'
-      +LVL_NAME[k]+'<span class="cnt">'+c[k]+'</span></span>';
+      +(sel?'✓ ':'')+LVL_NAME[k]+'<span class="cnt">'+c[k]+'</span></span>';
   });
   h+='<span>· 📍 локация и 🔒 условие — кликабельны · «?» — где добывать</span></div>';
   h+='<div class="fbar"><label><input type="checkbox" id="hd" '+(S.hideDone?'checked':'')+'>скрыть собранное</label>';
@@ -661,11 +674,11 @@ const view=document.getElementById('view');
 const wikiUrl=n=>WIKI+encodeURIComponent(String(n).replace(/ /g,'_'));
 
 function locChips(it){
-  if(!it.loc) return '';
-  const L=LOC[it.loc]; if(!L) return '';
+  const key=effLoc(it); if(!key) return '';
+  const L=LOC[key]; if(!L) return '';
   return L.gate
-    ? '<span class="b gate" data-loc="'+it.loc+'">🔒 '+esc(L.n)+' · '+esc(L.gate)+'</span>'
-    : '<span class="b loc" data-loc="'+it.loc+'">📍 '+esc(L.n)+'</span>';
+    ? '<span class="b gate" data-loc="'+key+'">🔒 '+esc(L.n)+' · '+esc(L.gate)+'</span>'
+    : '<span class="b loc" data-loc="'+key+'">📍 '+esc(L.n)+'</span>';
 }
 
 function itemHTML(it,showBundle){
@@ -939,7 +952,7 @@ function openLoc(key){
    +'<p style="font-size:13.5px">'+esc(L.how)+'</p>'
    +(L.img?'<img class="shot" src="'+L.img+'" alt="'+esc(L.n)+'">':'')
    +'<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'
-   +(ALL.some(i=>i.loc===key)?'<button data-locfilter="'+key+'">Показать все предметы отсюда</button>':'')
+   +(ALL.some(i=>hasLoc(i,key))?'<button data-locfilter="'+key+'">Показать все предметы отсюда</button>':'')
    +'<a href="'+wikiUrl(L.wiki)+'" target="_blank" rel="noopener"><button>Статья на вики ↗</button></a>'
    +'<button id="closemask">Закрыть</button></div></div>';
   document.body.appendChild(d);
