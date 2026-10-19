@@ -116,6 +116,11 @@ if (Test-Path (Join-Path $game 'StardewModdingAPI.exe')) {
         $a = Get-LatestAsset 'Pathoschild/SMAPI' 'SMAPI-*-installer.zip'
         if ($DryRun) {
             Say "Скачал бы $($a.Name) ($($a.Tag)) и запустил установщик с --game-path." Yellow
+        } elseif ($script:Quiet) {
+            # Установщику SMAPI нужна настоящая консоль: он чистит экран через
+            # Console.Clear(). Без консоли он падает, поэтому даже не пробуем.
+            Say 'SMAPI ставится только из окна PowerShell — его установщику нужна консоль.' Yellow
+            Say 'Нажми «Установить» в приложении: откроется окно, и там он отработает.' Yellow
         } else {
             Say "Качаю $($a.Name) ($($a.Tag))"
             $zip = Join-Path $work $a.Name
@@ -127,9 +132,18 @@ if (Test-Path (Join-Path $game 'StardewModdingAPI.exe')) {
             if (-not $inst) { $inst = Get-ChildItem $out -Recurse -Filter 'install*.exe' | Select-Object -First 1 }
             if (-not $inst) { throw 'не нашёл установщик внутри архива' }
             Say 'Запускаю установщик SMAPI...'
-            & $inst.FullName --install --game-path $game --no-prompt 2>&1 | ForEach-Object { Say "  $_" }
-            if (Test-Path (Join-Path $game 'StardewModdingAPI.exe')) { Say 'SMAPI установлен.' Green }
-            else { Say 'Установщик отработал, но StardewModdingAPI.exe не появился.' Red }
+            # Запуск строго без конвейера и без 2>&1: любое перенаправление
+            # отбирает у установщика буфер консоли, и Console.Clear() падает
+            # с «Неверный дескриптор». Вывод он пишет сам в это же окно.
+            & $inst.FullName --install --game-path $game --no-prompt
+            $rc = $LASTEXITCODE
+            if (Test-Path (Join-Path $game 'StardewModdingAPI.exe')) {
+                Say 'SMAPI установлен.' Green
+            } else {
+                Say "SMAPI не установился (код установщика: $rc)." Red
+                Say 'Поставь вручную: скачай архив с https://smapi.io/ и запусти' Yellow
+                Say '«install on Windows.bat» двойным кликом.' Yellow
+            }
         }
     } catch {
         Say "Не получилось: $_" Red
