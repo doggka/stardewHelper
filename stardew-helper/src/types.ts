@@ -35,6 +35,8 @@ export interface Item {
   tree?: 1;
   /** реалистично самый ранний сезон */
   e?: Season;
+  /** сколько дней растёт культура — чтобы считать, успеет ли до конца сезона */
+  grow?: number;
 
   // проставляются при инициализации
   id: string;
@@ -125,6 +127,17 @@ export interface ModInfo {
   name: string;
   installed: boolean;
   version: string | null;
+}
+
+/** Что выгрузил мод-мостик. Null, если мода нет или он ещё не писал. */
+export interface BridgeState {
+  saveId: string;
+  day: number;
+  season: string;
+  year: number;
+  weather: string;
+  cartPresent: boolean;
+  cart: { name: string; price: number; stock: number }[];
 }
 
 export interface GameInfo {

@@ -7,6 +7,7 @@ import { filterActive, visible } from '../logic/filters';
 import { norm } from '../logic/search';
 import { bundleHTML, esc, flat, vaultHTML } from '../ui/html';
 import { searchVerdict } from '../ui/searchVerdict';
+import { todayHTML } from './today';
 
 /**
  * Предметы, отмеченные прямо сейчас. Остаются в списке зачёркнутыми
@@ -55,32 +56,6 @@ export function renderRooms(): string {
     : 'Ничего не найдено — попробуй другое название.') + '</p>';
 }
 
-export function renderTodo(): string {
-  const open = openItems();
-  const urgent: Item[] = [], lost: Item[] = [], cart: Item[] = [], chain: Item[] = [];
-  open.forEach((i) => {
-    const s = st(i);
-    if (done(i)) urgent.push(i); // только что отмеченное — оставляем на месте
-    else if (s.lvl === 'past') lost.push(i);
-    else if (s.last) urgent.push(i);
-    else if (s.lvl === 'cart') cart.push(i);
-    else if (i.c && i.earliest <= +S.season) chain.push(i);
-  });
-  let h = searchVerdict();
-  // в панели про «последний сезон» бейдж с тем же текстом на каждой строке —
-  // тавтология, которая вдобавок разгоняет строку с 48 до 74 пикселей
-  h += '<div class="panel"><h2>⏳ Последний сезон сбора <em>— ' + SEASON_RU[S.season].toLowerCase()
-    + '; дальше только торговка или 2-й год</em></h2>'
-    + (urgent.length ? flat(urgent, { lastIsImplied: true })
-      : '<p class="empty">Чисто — в этом сезоне ничего не закрывается.</p>') + '</div>';
-  if (lost.length) h += '<div class="panel"><h2 style="color:#ff9b9b">🔴 В 1-м году уже никак</h2>'
-    + '<p class="note">Сезон прошёл, и торговка эти предметы не продаёт. Остаётся 2-й год.</p>' + flat(lost) + '</div>';
-  if (cart.length) h += '<div class="panel"><h2>🛒 Вне сезона — добирается у торговки</h2>'
-    + '<p class="note">Сезон сбора прошёл, но эти предметы встречаются в повозке. Проверяй каждую пятницу и воскресенье.</p>' + flat(cart) + '</div>';
-  if (chain.length) h += '<div class="panel"><h2>🔧 Требуют подготовки <em>— начинай заранее</em></h2>' + flat(chain) + '</div>';
-  return h;
-}
-
 /** Момент, ради которого всё затевалось, не должен выглядеть как ещё одна панель. */
 export function renderDone(): string {
   const t = totals();
@@ -94,23 +69,6 @@ export function renderDone(): string {
     + '<button data-t="cart">🛒 Торговка</button></div></div>';
 }
 
-export function renderAvail(): string {
-  const arr = openItems()
-    .filter((i) => {
-      if (done(i)) return true;
-      const l = st(i).lvl;
-      return l === 'now' || l === 'cond';
-    })
-    .sort((a, b) => (st(a).lvl === 'now' ? 0 : 1) - (st(b).lvl === 'now' ? 0 : 1));
-  // «Пусто.» не говорит ни почему, ни что делать — а причин минимум три
-  const empty = filterActive()
-    ? 'Под фильтр ничего не попало. <button id="fclear">Сбросить фильтр</button>'
-    : 'В ' + SEASON_RU[S.season].toLowerCase() + ' при такой погоде собирать нечего — '
-      + 'загляни во вкладку «План по сезонам».';
-  return searchVerdict() + '<div class="panel"><h2>Доступно сейчас <em>— ' + SEASON_RU[S.season].toLowerCase() + ', '
-    + (S.weather === 'rain' ? 'дождь' : 'ясно') + ' · ' + arr.length + ' предметов</em></h2>'
-    + (arr.length ? flat(arr) : '<p class="empty">' + empty + '</p>') + '</div>';
-}
 
 export function renderCart(): string {
   const today = cartToday(), nx = nextCart();
@@ -195,10 +153,10 @@ export function renderPlan(): string {
 
 export function renderTrackerBody(): string {
   const t = totals();
-  if (t.ok === t.n && S.tab === 'todo' && !S.q) return renderDone();
-  return S.tab === 'rooms' ? renderRooms()
-    : S.tab === 'plan' ? renderPlan()
-    : S.tab === 'cart' ? renderCart()
-    : S.tab === 'avail' ? renderAvail()
-    : renderTodo();
+  if (t.ok === t.n && S.tab === 'rooms' && !S.q) return renderDone();
+  // Вкладок больше нет: главный экран — комнаты с блоком «Сегодня» сверху.
+  // План и торговка остались справочниками и открываются из меню «⋯».
+  if (S.tab === 'plan') return renderPlan();
+  if (S.tab === 'cart') return renderCart();
+  return (S.q ? '' : todayHTML()) + renderRooms();
 }

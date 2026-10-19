@@ -4,6 +4,7 @@ import { S, load, progress, sanitize, save } from './state';
 import { cartToday, dow, nextCart, setDone, totals } from './logic/status';
 import { esc, filterBarHTML, openLoc } from './ui/html';
 import { clearRecent, markRecent, renderTrackerBody } from './screens/tracker';
+import { setBridgeState } from './screens/today';
 import { bridge, isDesktop, openExternal } from './bridge';
 
 const shell = document.getElementById('shell') as HTMLElement;
@@ -17,14 +18,12 @@ let playOpen = false;
 let gameFound = false;
 let smapiOk = false;
 
-/** Подпись у первой вкладки — она единственная не говорит, что внутри. */
-const TABS: [string, string, string?][] = [
-  ['todo', '⚠ Не продолбать', '— закрывается в этом сезоне'],
-  ['rooms', 'Комнаты'],
-  ['plan', 'План по сезонам'],
-  ['cart', '🛒 Торговка'],
-  ['avail', 'Доступно сейчас'],
-];
+/*
+ * Ряда вкладок больше нет. «Не продолбать» и «Доступно сейчас» показывали
+ * те же предметы, что и «Комнаты», только иначе отфильтрованные — теперь это
+ * блок «Сегодня» наверху. План по сезонам и торговка — справочники,
+ * они переехали в меню «⋯».
+ */
 
 /* ===================== ЭКРАН ТРЕКЕРА ===================== */
 
@@ -106,6 +105,9 @@ function trackerChrome(): string {
           + (isDesktop && S.save ? '<button role="menuitem" data-act="resync">↻ Обновить из сейва</button>' : '')
           + (isDesktop ? '<button role="menuitem" data-act="chooseSave">'
               + (S.save ? 'Сменить сейв' : 'Выбрать сейв') + '</button>' : '')
+          + '<div class="msep"></div>'
+          + '<button role="menuitem" data-t="plan">План по сезонам</button>'
+          + '<button role="menuitem" data-t="cart">🛒 Торговка</button>'
           + (isDesktop ? '<button role="menuitem" data-act="mods">Моды</button>' : '')
           + '<div class="msep"></div>'
           + '<button role="menuitem" data-act="export">Экспорт прогресса</button>'
@@ -134,12 +136,11 @@ function trackerChrome(): string {
     + ' value="' + (S.q || '').replace(/"/g, '&quot;') + '">'
     + (S.q ? '<button data-act="clearSearch" aria-label="Сбросить поиск">✕</button>' : '')
     + '</div>'
-    + '<div class="tabs' + (S.q ? ' dimmed' : '') + '" id="tabs" role="tablist" aria-label="Разделы">'
-    + TABS.map(([k, n, sub]) => '<button role="tab" data-t="' + k + '"'
-      + ' aria-selected="' + (S.tab === k) + '"' + (S.tab === k ? ' class="on"' : '') + '>'
-      + n + (sub ? ' <small>' + sub + '</small>' : '') + '</button>').join('')
-    + '</div></header>'
-    + '<main><div id="filters">' + filterBarHTML() + '</div>'
+    + '</header>'
+    + '<main>'
+    + (S.tab === 'rooms'
+        ? '<div id="filters">' + filterBarHTML() + '</div>'
+        : '<button class="backlink" data-t="rooms">← К комнатам</button>')
     + '<div id="view" tabindex="-1">' + renderTrackerBody() + '</div></main>'
     + '<div class="foot">Данные с ru.stardewvalleywiki.com · обычный набор узелков '
     + '(не «перемешанные узелки» из настроек фермы) · прогресс хранится локально</div>';
@@ -273,7 +274,16 @@ document.addEventListener('click', (e) => {
     save(); render(); return;
   }
   if (d.w) { S.weather = d.w as 'sun' | 'rain'; save(); render(); return; }
-  if (d.t) { S.tab = d.t; clearRecent(); save(); render(); shell.scrollTop = 0; return; }
+  if (d.fold) {
+    const i = S.openBundles.indexOf(d.fold);
+    if (i >= 0) S.openBundles.splice(i, 1);
+    else S.openBundles.push(d.fold);
+    save(); render(); return;
+  }
+  if (d.t) {
+    S.tab = d.t; menuOpen = false; clearRecent();
+    save(); render(); shell.scrollTop = 0; return;
+  }
   // ищем ближайший data-act, а не только у самого target: у кнопок есть
   // вложенные подписи, и клик по ним иначе проваливается мимо обработчика
   const actEl = el.closest<HTMLElement>('[data-act]');
@@ -390,6 +400,12 @@ async function action(name: string, el: HTMLElement): Promise<void> {
     render();
     return;
   }
+  // кнопки блока «Сегодня» включают фильтр в списке комнат,
+  // а не уводят на отдельный экран
+  if (name === 'filterLast') { S.filters = ['last']; S.tab = 'rooms'; save(); render(); return; }
+  if (name === 'filterNow') { S.filters = ['now']; S.tab = 'rooms'; save(); render(); return; }
+  if (name === 'cartInfo') { S.tab = 'cart'; save(); render(); shell.scrollTop = 0; return; }
+
   if (name === 'clearSearch') {
     S.q = '';
     save(); render();
@@ -418,6 +434,11 @@ function watchFocus(): void {
   const b = bridge;
   if (!b) return;
   window.addEventListener('focus', () => {
+    // ассортимент торговки мод переписывает каждый игровой день
+    void b.game.bridge().then((st) => {
+      setBridgeState(st);
+      if (st) render();
+    });
     // SMAPI могли поставить, пока приложение открыто — иначе пункт меню
     // так и останется серым до перезапуска
     void b.game.detect().then((g) => {
@@ -467,5 +488,10 @@ if (bridge) {
     gameFound = !!g.path;
     smapiOk = g.smapiInstalled;
     if (gameFound) render();
+  });
+  void bridge.game.bridge().then((st) => {
+    if (!st) return;
+    setBridgeState(st);
+    render();
   });
 }

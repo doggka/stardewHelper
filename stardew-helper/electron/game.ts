@@ -102,6 +102,23 @@ function modVersion(dir: string): string | null {
   }
 }
 
+/**
+ * Ассортимент торговки, выгруженный модом-мостиком.
+ * Снаружи его не предсказать: игра собирает список на лету, а в 1.6 ещё
+ * и новым генератором случайных чисел. Мод читает готовый объект изнутри
+ * игры и пишет сюда — это факт, а не прогноз.
+ */
+export function readBridge(game: GameInfo): unknown {
+  if (!game.path) return null;
+  const file = path.join(game.path, 'Mods', 'StardewHelperBridge', 'state.json');
+  if (!fs.existsSync(file)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, ''));
+  } catch {
+    return null;
+  }
+}
+
 export function listMods(game: GameInfo): ModInfo[] {
   const out: ModInfo[] = [];
   for (const m of MODS) {

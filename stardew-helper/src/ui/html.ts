@@ -69,7 +69,21 @@ export function itemHTML(it: Item, opts: ItemOpts = {}): string {
 
 export function bundleHTML(b: Bundle): string {
   const p = bprog(b), vis = (b.items || []).filter(visible);
-  let h = '<div class="bundle' + (p.ok ? ' done' : '') + '"><h3>' + (p.ok ? '✓ ' : '') + esc(b.name)
+
+  // Закрытый узелок по умолчанию свёрнут: смотреть на список того,
+  // что уже сдано, незачем. Разворачивается кликом по заголовку.
+  if (p.ok && S.openBundles.indexOf(b.id) < 0) {
+    return '<div class="bundle done folded">'
+      + '<button class="bfold" data-fold="' + b.id + '" aria-expanded="false">'
+      + '<span class="bf-ok">✓</span>'
+      + '<span class="bf-name">' + esc(b.name) + '</span>'
+      + '<span class="b g">' + p.n + '/' + p.n + '</span>'
+      + '<span class="bf-more">развернуть</span></button></div>';
+  }
+
+  let h = '<div class="bundle' + (p.ok ? ' done' : '') + '">'
+    + (p.ok ? '<button class="bfold open" data-fold="' + b.id + '" aria-expanded="true">свернуть</button>' : '')
+    + '<h3>' + (p.ok ? '✓ ' : '') + esc(b.name)
 
     + '<span class="b g">' + p.c + '/' + p.n + (b.items && b.items.length > b.slots ? ' (из ' + b.items.length + ')' : '') + '</span></h3>'
     + '<div class="meta">Награда: ' + esc(b.reward) + ' · реально закрыть: '

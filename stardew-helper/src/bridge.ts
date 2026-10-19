@@ -1,4 +1,4 @@
-import type { GameInfo, ModInfo, SaveSummary } from './types';
+import type { BridgeState, GameInfo, ModInfo, SaveSummary } from './types';
 
 /** Мост в процесс Electron. В обычном браузере его нет — тогда работаем вручную. */
 export interface Bridge {
@@ -24,6 +24,7 @@ export interface Bridge {
     cancelBootstrap(): Promise<boolean>;
     bootstrapInConsole(): Promise<{ started: boolean; error?: string }>;
     launch(mode: string): Promise<{ ok: boolean; error?: string; cmd?: string }>;
+    bridge(): Promise<BridgeState | null>;
     dropDir(): Promise<string>;
     openDropDir(): Promise<string>;
     onLine(cb: (line: string, isErr: boolean) => void): void;
@@ -82,6 +83,15 @@ if (import.meta.env.DEV && location.search.includes('mock') && !window.sdv) {
       cancelBootstrap: async () => false,
       bootstrapInConsole: async () => ({ started: false, error: 'заглушка' }),
       launch: async (m) => ({ ok: true, cmd: 'mock:' + m }),
+      bridge: async () => ({
+        saveId: '452028593', day: 11, season: 'spring', year: 1, weather: 'sun',
+        cartPresent: true,
+        cart: [
+          { name: 'Семена красной капусты', price: 650, stock: 5 },
+          { name: 'Сморчок', price: 450, stock: 3 },
+          { name: 'Деревянный забор', price: 120, stock: 20 },
+        ],
+      }),
       dropDir: async () => 'C:\\mock\\drop',
       openDropDir: async () => '',
       onLine: () => {},

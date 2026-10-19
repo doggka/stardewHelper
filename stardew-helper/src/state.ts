@@ -31,6 +31,8 @@ export interface AppState {
   /** id предметов с раскрытым «где добывать» — в состоянии, а не классом на узле,
    *  иначе подсказка схлопывается при любой перерисовке */
   openSrc: string[];
+  /** закрытые узелки, которые пользователь развернул вручную */
+  openBundles: string[];
 
   /** прогресс по каждому сейву отдельно */
   bySave: Record<string, Progress>;
@@ -42,15 +44,15 @@ const OLD_KEY = 'sdv-bundles-v1';
 function defaults(): AppState {
   return {
     screen: 'welcome', saveId: 'manual', save: null, modsSeen: false, launchMode: 'smapi',
-    season: 0, day: 1, weather: 'sun', tab: 'todo', q: '',
+    season: 0, day: 1, weather: 'sun', tab: 'rooms', q: '',
     y1guarantee: false, filters: [], hideDone: false, locFilter: null,
-    openSrc: [],
+    openSrc: [], openBundles: [],
     bySave: {},
   };
 }
 
 const SCREENS = ['welcome', 'mods', 'tracker'];
-const TABS = ['todo', 'rooms', 'plan', 'cart', 'avail'];
+const TABS = ['rooms', 'plan', 'cart'];
 
 /**
  * Приводит состояние в рабочий вид. Нужен и при загрузке, и при импорте файла:
@@ -64,10 +66,11 @@ export function sanitize(s: AppState): void {
   s.day = Math.floor(s.day);
   if (s.weather !== 'sun' && s.weather !== 'rain') s.weather = 'sun';
   if (SCREENS.indexOf(s.screen) < 0) s.screen = 'tracker';
-  if (TABS.indexOf(s.tab) < 0) s.tab = 'todo';
+  if (TABS.indexOf(s.tab) < 0) s.tab = 'rooms';
   if (typeof s.q !== 'string') s.q = '';
   if (!Array.isArray(s.filters)) s.filters = [];
   if (!Array.isArray(s.openSrc)) s.openSrc = [];
+  if (!Array.isArray(s.openBundles)) s.openBundles = [];
   if (typeof s.locFilter !== 'string') s.locFilter = null;
   s.hideDone = !!s.hideDone;
   s.y1guarantee = !!s.y1guarantee;

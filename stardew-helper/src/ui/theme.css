@@ -191,6 +191,40 @@ button.b{font:inherit;font-size:12px;line-height:inherit;cursor:pointer}
 .b.loc,.b.gate{background:none;color:var(--dim);border-color:var(--line);cursor:pointer}
 .b.loc:hover,.b.gate:hover{color:var(--ink);border-color:var(--faint)}
 
+/* ---------- блок «Сегодня» ---------- */
+.today{background:var(--card);border-radius:12px;padding:6px 18px 10px;margin:0 0 26px}
+.thead{font-size:12.5px;color:var(--faint);padding:10px 0 8px;border-bottom:1px solid var(--line);
+  text-transform:lowercase;letter-spacing:.2px}
+.trow{display:flex;gap:13px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:0}
+.trow > div{flex:1;min-width:0}
+.trow b{font-weight:600;font-size:14.5px;display:block}
+.trow.urgent b{color:var(--last)}
+.tico{font-size:17px;width:22px;text-align:center;flex:0 0 auto}
+.tsub{display:block;color:var(--dim);font-size:12.5px;margin-top:2px}
+.trow button{padding:5px 12px;font-size:12.5px;flex:0 0 auto}
+
+/* возврат с справочных экранов */
+.backlink{border:0;background:none;color:var(--dim);padding:0 0 14px;font-size:13.5px}
+.backlink:hover{background:none;color:var(--ink)}
+
+/* ---------- свёрнутый закрытый узелок ---------- */
+.bundle.folded{padding:0;background:none}
+.bfold{width:100%;display:flex;gap:10px;align-items:center;text-align:left;
+  background:var(--card);border:0;border-radius:12px;padding:13px 18px;font-size:15px}
+.bfold:hover{background:var(--card2);border:0}
+.bf-ok{color:var(--now);font-weight:700}
+.bf-name{flex:1;min-width:0;font-weight:600;color:var(--dim)}
+.bf-more{color:var(--faint);font-size:12px}
+.bundle .bfold.open{width:auto;float:right;background:none;padding:2px 8px;
+  font-size:12px;color:var(--faint);margin:-4px -8px 0 0}
+.bundle .bfold.open:hover{background:var(--card2)}
+
+/* ---------- «ещё нашлось» под карточкой поиска ---------- */
+.morefound{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:-8px 0 22px}
+.morefound > span{color:var(--faint);font-size:13px}
+.morefound .sugg{margin-top:0}
+
 /* ---------- панели и списки ---------- */
 .panel{margin-bottom:26px}
 .panel h2{margin:0 0 3px;font-size:17px;font-weight:650;color:var(--ink)}
