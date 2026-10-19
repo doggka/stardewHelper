@@ -76,7 +76,9 @@ function trackerChrome(): string {
   const curLaunch = LAUNCH.find((l) => l[0] === S.launchMode) ?? LAUNCH[0];
   const play = isDesktop && gameFound
     ? '<div class="menuwrap playwrap">'
-      + '<button class="play" data-act="play" title="' + esc(curLaunch[1]) + '">▶ Играть</button>'
+      // способ видно на кнопке, а не в подсказке при наведении
+      + '<button class="play" data-act="play">▶ Играть'
+      + '<span class="pmode">' + esc(curLaunch[1].replace(/^Через /, '')) + '</span></button>'
       + '<button class="playmore" data-act="playMenu" aria-haspopup="true"'
       + ' aria-expanded="' + playOpen + '" aria-label="Чем запускать">▾</button>'
       + (playOpen
@@ -272,7 +274,10 @@ document.addEventListener('click', (e) => {
   }
   if (d.w) { S.weather = d.w as 'sun' | 'rain'; save(); render(); return; }
   if (d.t) { S.tab = d.t; clearRecent(); save(); render(); shell.scrollTop = 0; return; }
-  if (d.act) { void action(d.act, el); return; }
+  // ищем ближайший data-act, а не только у самого target: у кнопок есть
+  // вложенные подписи, и клик по ним иначе проваливается мимо обработчика
+  const actEl = el.closest<HTMLElement>('[data-act]');
+  if (actEl?.dataset.act) { void action(actEl.dataset.act, actEl); return; }
 });
 
 /*
@@ -311,11 +316,11 @@ async function action(name: string, el: HTMLElement): Promise<void> {
   if (playOpen) playOpen = false;
 
   if (name === 'setLaunch') {
+    // только запоминаем способ: запускает кнопка «Играть», а не выбор в меню
     const m = el.closest<HTMLElement>('[data-mode]')?.dataset.mode;
     if (m) S.launchMode = m;
     save();
     render();
-    void launch();
     return;
   }
   if (name === 'play') { await launch(); return; }
@@ -413,6 +418,14 @@ function watchFocus(): void {
   const b = bridge;
   if (!b) return;
   window.addEventListener('focus', () => {
+    // SMAPI могли поставить, пока приложение открыто — иначе пункт меню
+    // так и останется серым до перезапуска
+    void b.game.detect().then((g) => {
+      if (g.smapiInstalled === smapiOk && !!g.path === gameFound) return;
+      smapiOk = g.smapiInstalled;
+      gameFound = !!g.path;
+      render();
+    });
     if (!S.save || S.screen !== 'tracker') return;
     void (async () => {
       const fresh = await b.saves.read(S.save!.id);
