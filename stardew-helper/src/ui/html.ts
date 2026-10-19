@@ -70,6 +70,7 @@ export function itemHTML(it: Item, opts: ItemOpts = {}): string {
 export function bundleHTML(b: Bundle): string {
   const p = bprog(b), vis = (b.items || []).filter(visible);
   let h = '<div class="bundle' + (p.ok ? ' done' : '') + '"><h3>' + (p.ok ? '✓ ' : '') + esc(b.name)
+
     + '<span class="b g">' + p.c + '/' + p.n + (b.items && b.items.length > b.slots ? ' (из ' + b.items.length + ')' : '') + '</span></h3>'
     + '<div class="meta">Награда: ' + esc(b.reward) + ' · реально закрыть: '
     + SEASON_RU[b.earliest].toLowerCase() + ', 1-й год</div>'
