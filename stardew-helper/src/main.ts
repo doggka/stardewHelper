@@ -8,6 +8,9 @@ import { bridge, isDesktop, openExternal } from './bridge';
 
 const shell = document.getElementById('shell') as HTMLElement;
 
+/** Меню «⋯». Не в состоянии: открытость не должна переживать перезапуск. */
+let menuOpen = false;
+
 /** Подпись у первой вкладки — она единственная не говорит, что внутри. */
 const TABS: [string, string, string?][] = [
   ['todo', '⚠ Не продолбать', '— закрывается в этом сезоне'],
@@ -25,56 +28,75 @@ function trackerChrome(): string {
   const cartLine = DOW[dow(S.day)]
     + (today ? ' · <b>🛒 торговка здесь</b>' : nx !== null ? ' · 🛒 через ' + nx + ' дн.' : ' · 🛒 в этом сезоне всё');
 
-  // Отдельная строка: какой сейв открыт и что с ним можно сделать.
-  // Раньше это были мелкие кнопки внутри плотного ряда контролов — их не замечали.
   const manualCount = Object.keys(progress().checked).length;
   const savedCount = S.save ? Object.values(S.save.progress).reduce((a, x) => a + x.length, 0) : 0;
-  const marks = savedCount
-    ? 'отмечено ' + manualCount + ', из сейва ' + savedCount
-    : 'отмечено ' + manualCount;
-  const saveBar = isDesktop
-    ? '<div class="savebar' + (S.save ? '' : ' manual') + '">'
-      + (S.save
-          ? '<span class="sb-name">🌱 ' + esc(S.save.farmName) + '</span>'
-            + '<span class="sb-meta">' + esc(S.save.playerName) + ' · ' + SEASON_RU[S.save.season].toLowerCase()
-            + ', день ' + S.save.day + ', год ' + S.save.year + '</span>'
-            + '<span class="sb-meta">' + marks + '</span>'
-          : '<span class="sb-name">Режим без сейва</span>'
-            + '<span class="sb-meta">галочки ставишь вручную, ' + marks + '</span>')
-      + '<span class="sb-sp"></span>'
-      + (S.save ? '<button data-act="resync">↻ Обновить из сейва</button>' : '')
-      + '<button data-act="chooseSave">' + (S.save ? 'Сменить сейв' : 'Выбрать сейв') + '</button>'
-      // прятать нечего, пока ничего не накоплено: на первом запуске
-      // деструктивная кнопка только пугает
-      + (Object.keys(S.bySave).length ? '<button data-act="resetAll" class="danger">Стереть все данные</button>' : '')
-      + '</div>'
+
+  // Кто и где: ферма и игрок. Дата живёт рядом, в блоке «когда» — раньше она
+  // была в двух местах сразу, в строке сейва и в селекторах под ней.
+  const who = isDesktop
+    ? (S.save
+        ? '<span class="farm">🌱 ' + esc(S.save.farmName) + '</span>'
+          + '<span class="who">' + esc(S.save.playerName) + '</span>'
+        : '<span class="farm manual">Без сейва</span>'
+          + '<span class="who">галочки вручную</span>')
+    : '<span class="farm">🌱 Узелки Общественного центра</span>';
+
+  // Если крутить сезон при загруженном сейве, это «заглянуть вперёд»,
+  // а не «поменять дату». Говорим об этом только когда это действительно так.
+  const peeking = S.save && (S.save.season !== S.season || S.save.day !== S.day);
+  const peek = peeking
+    ? '<span class="peek">смотришь другой сезон<button data-act="backToSave">вернуть ' + SEASON_RU[S.save!.season].toLowerCase()
+      + ', день ' + S.save!.day + '</button></span>'
     : '';
 
-  // название приложения уже есть в титулбаре — здесь говорим о цели
-  return '<a class="skip" href="#view">К списку</a><header>'
-    + '<h1>Закрыть за первый год <small>— 30 узелков Общественного центра</small></h1>'
-    + saveBar
-    + '<div class="row">'
-    + '<div class="ctl"><label>Сезон</label>'
-    + '<select id="season">'
+  const when = '<div class="when">'
+    + '<select id="season" aria-label="Сезон">'
     + [0, 1, 2, 3].map((i) => '<option value="' + i + '"' + (S.season === i ? ' selected' : '') + '>' + SEASON_RU[i] + '</option>').join('')
     + '</select>'
-    + '<label>день</label><input type="number" id="day" min="1" max="28" style="width:52px" value="' + S.day + '"></div>'
-    + '<div class="ctl"><label>Погода</label><div class="seg" id="weather">'
+    + '<label for="day">день</label><input type="number" id="day" min="1" max="28" value="' + S.day + '">'
+    + '<div class="seg" id="weather" role="group" aria-label="Погода">'
     + '<button data-w="sun"' + (S.weather === 'sun' ? ' class="on"' : '') + '>☀ Ясно</button>'
     + '<button data-w="rain"' + (S.weather === 'rain' ? ' class="on"' : '') + '>☔ Дождь</button>'
-    + '</div></div>'
-    + '<div class="cartday">' + cartLine + '</div>'
-    + '<div class="ctl grow"><label>Узелки</label>'
-    + '<span class="num">' + t.ok + '/' + t.n + '</span>'
-    + '<div class="bar"><i style="width:' + (t.ok / t.n * 100) + '%"></i></div></div>'
-    + '<div class="ctl"><input type="search" id="q" placeholder="название предмета"'
-    + ' aria-label="Поиск предмета" style="width:180px" value="' + (S.q || '').replace(/"/g, '&quot;') + '"></div>'
-    + '<div class="ctl"><button data-act="export">Экспорт</button><button data-act="import">Импорт</button>'
-    + (isDesktop ? '<button data-act="mods">Моды</button>' : '')
-    + '<button data-act="reset">Снять галочки этой фермы</button></div>'
+    + '</div>' + peek + '</div>';
+
+  // Служебное — в меню: этим пользуются раз в месяц, а места в шапке
+  // оно занимало наравне с тем, на что смотришь каждую минуту.
+  const menu = '<div class="menuwrap">'
+    + '<button class="menubtn" data-act="menu" aria-haspopup="true" aria-expanded="' + menuOpen + '"'
+    + ' aria-label="Ещё">⋯</button>'
+    + (menuOpen
+        ? '<div class="menu" role="menu">'
+          + (isDesktop && S.save ? '<button role="menuitem" data-act="resync">↻ Обновить из сейва</button>' : '')
+          + (isDesktop ? '<button role="menuitem" data-act="chooseSave">'
+              + (S.save ? 'Сменить сейв' : 'Выбрать сейв') + '</button>' : '')
+          + (isDesktop ? '<button role="menuitem" data-act="mods">Моды</button>' : '')
+          + '<div class="msep"></div>'
+          + '<button role="menuitem" data-act="export">Экспорт прогресса</button>'
+          + '<button role="menuitem" data-act="import">Импорт прогресса</button>'
+          + '<div class="msep"></div>'
+          + '<button role="menuitem" data-act="reset" class="danger">Снять галочки этой фермы</button>'
+          + (Object.keys(S.bySave).length
+              ? '<button role="menuitem" data-act="resetAll" class="danger">Стереть все данные</button>' : '')
+          + '</div>'
+        : '')
+    + '</div>';
+
+  return '<a class="skip" href="#view">К списку</a><header>'
+    // один ряд с переносом: на широком окне всё в строку, на узком само
+    // раскладывается в два, без отдельной полупустой полосы
+    + '<div class="ctxbar">' + who
+    + '<span class="prog"><b>' + t.ok + ' из ' + t.n + '</b> узелков</span>'
+    + '<div class="bar"><i style="width:' + (t.ok / t.n * 100) + '%"></i></div>'
+    + '<span class="cartday">' + cartLine + '</span>'
+    + (savedCount ? '<span class="dimnote">отмечено ' + manualCount + ', из сейва ' + savedCount + '</span>' : '')
+    + '<span class="ctx-sp"></span>' + when + menu + '</div>'
+    + '<div class="searchrow' + (S.q ? ' active' : '') + '">'
+    + '<span class="sicon" aria-hidden="true">🔎</span>'
+    + '<input type="search" id="q" aria-label="Поиск предмета"'
+    + ' placeholder="Нужен ли предмет для узелков? Введи название…"'
+    + ' value="' + (S.q || '').replace(/"/g, '&quot;') + '">'
+    + (S.q ? '<button data-act="clearSearch" aria-label="Сбросить поиск">✕</button>' : '')
     + '</div>'
-    + '<p class="searchhint">Введи название — скажу, нужен ли он для узелков</p>'
     + '<div class="tabs' + (S.q ? ' dimmed' : '') + '" id="tabs" role="tablist" aria-label="Разделы">'
     + TABS.map(([k, n, sub]) => '<button role="tab" data-t="' + k + '"'
       + ' aria-selected="' + (S.tab === k) + '"' + (S.tab === k ? ' class="on"' : '') + '>'
@@ -162,6 +184,13 @@ document.addEventListener('click', (e) => {
   const el = e.target as HTMLElement;
   const d = el.dataset;
 
+  // клик мимо открытого меню — закрыть и ничего больше не делать
+  if (menuOpen && !el.closest('.menuwrap')) {
+    menuOpen = false;
+    render();
+    return;
+  }
+
   if (d.win) {
     if (!bridge) return;
     if (d.win === 'min') void bridge.window.minimize();
@@ -196,6 +225,27 @@ document.addEventListener('click', (e) => {
   if (d.act) { void action(d.act, el); return; }
 });
 
+/**
+ * Шапка сворачивается при прокрутке вниз и возвращается при прокрутке вверх.
+ * При окне 900×600 она занимала треть высоты постоянно — а нужна не всё время.
+ * Класс висит на shell: его render() не пересоздаёт, в отличие от содержимого.
+ */
+let lastScroll = 0;
+shell.addEventListener('scroll', () => {
+  const y = shell.scrollTop;
+  if (y > 90 && y > lastScroll) shell.classList.add('compact');
+  else if (y < lastScroll - 4 || y < 40) shell.classList.remove('compact');
+  lastScroll = y;
+}, { passive: true });
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && menuOpen) {
+    menuOpen = false;
+    render();
+    document.querySelector<HTMLElement>('.menubtn')?.focus();
+  }
+});
+
 let qt: number | undefined;
 document.addEventListener('input', (e) => {
   const el = e.target as HTMLInputElement;
@@ -209,6 +259,14 @@ document.addEventListener('input', (e) => {
 });
 
 async function action(name: string, el: HTMLElement): Promise<void> {
+  if (name === 'menu') { menuOpen = !menuOpen; render(); return; }
+  // любое действие из меню его же и закрывает
+  if (menuOpen) menuOpen = false;
+
+  if (name === 'backToSave') {
+    if (S.save) { S.season = S.save.season; S.day = S.save.day; }
+    save(); render(); return;
+  }
   if (name === 'export') {
     const b = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' });
     const a = document.createElement('a');

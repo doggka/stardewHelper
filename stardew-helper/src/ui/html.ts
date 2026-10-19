@@ -116,13 +116,15 @@ export function filterBarHTML(): string {
       + ' data-f="' + k + '" aria-pressed="' + sel + '"' + (z ? ' disabled' : '') + '>'
       + (sel ? '✓ ' : '') + LVL_NAME[k] + '<span class="cnt">' + c[k] + '</span></button>';
   });
-  h += '</div>';
-  h += '<div class="fbar"><label><input type="checkbox" id="hd" ' + (S.hideDone ? 'checked' : '') + '>скрыть собранное</label>';
+  // «скрыть собранное» и сброс живут в той же строке, что и чипы:
+  // отдельная полоса под ними съедала высоту ради одного флажка
+  h += '<label class="hd"><input type="checkbox" id="hd" ' + (S.hideDone ? 'checked' : '') + '>скрыть собранное</label>';
   if (S.locFilter && LOC[S.locFilter]) h += '<span class="pill">📍 только: ' + esc(LOC[S.locFilter].n) + '</span>';
   if (filterActive()) {
     const tot = ALL.filter((i) => !i.bundle.room.extra).length;
     const vis = ALL.filter((i) => !i.bundle.room.extra && visible(i)).length;
-    h += '<span class="pill">показано ' + vis + ' из ' + tot + '</span><button id="fclear">× сбросить фильтр</button>';
+    h += '<span class="pill">показано ' + vis + ' из ' + tot + '</span>'
+      + '<button id="fclear">× сбросить фильтр</button>';
   }
   h += '</div>';
   return h;
