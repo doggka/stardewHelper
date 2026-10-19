@@ -8,6 +8,22 @@ import { norm } from '../logic/search';
 import { bundleHTML, esc, flat, vaultHTML } from '../ui/html';
 import { searchVerdict } from '../ui/searchVerdict';
 
+/**
+ * Предметы, отмеченные прямо сейчас. Остаются в списке зачёркнутыми
+ * до смены вкладки: иначе промах по соседней галочке убирает предмет
+ * с экрана, и чтобы понять какой — надо идти искать его в «Комнатах».
+ * Заодно это чинит потерю фокуса: восстанавливать его было не на чем.
+ */
+const recentlyDone = new Set<string>();
+export const markRecent = (id: string): void => void recentlyDone.add(id);
+export const clearRecent = (): void => recentlyDone.clear();
+
+/** Что показываем в рабочих списках: незакрытое плюс только что отмеченное. */
+function openItems(): Item[] {
+  return ALL.filter((i) => !i.bundle.room.extra && visible(i)
+    && (recentlyDone.has(i.id) || (!done(i) && !bprog(i.bundle).ok)));
+}
+
 function matchBundle(b: Bundle): boolean {
   if (!b.items) return false;
   if (!b.items.some(visible)) return false;
@@ -40,11 +56,12 @@ export function renderRooms(): string {
 }
 
 export function renderTodo(): string {
-  const open = ALL.filter((i) => !done(i) && !i.bundle.room.extra && !bprog(i.bundle).ok && visible(i));
+  const open = openItems();
   const urgent: Item[] = [], lost: Item[] = [], cart: Item[] = [], chain: Item[] = [];
   open.forEach((i) => {
     const s = st(i);
-    if (s.lvl === 'past') lost.push(i);
+    if (done(i)) urgent.push(i); // только что отмеченное — оставляем на месте
+    else if (s.lvl === 'past') lost.push(i);
     else if (s.last) urgent.push(i);
     else if (s.lvl === 'cart') cart.push(i);
     else if (i.c && i.earliest <= +S.season) chain.push(i);
@@ -78,8 +95,9 @@ export function renderDone(): string {
 }
 
 export function renderAvail(): string {
-  const arr = ALL.filter((i) => !done(i) && !i.bundle.room.extra && !bprog(i.bundle).ok && visible(i))
+  const arr = openItems()
     .filter((i) => {
+      if (done(i)) return true;
       const l = st(i).lvl;
       return l === 'now' || l === 'cond';
     })
@@ -96,7 +114,7 @@ export function renderAvail(): string {
 
 export function renderCart(): string {
   const today = cartToday(), nx = nextCart();
-  const open = ALL.filter((i) => !done(i) && !i.bundle.room.extra && !bprog(i.bundle).ok && visible(i));
+  const open = openItems().filter((i) => !done(i));
   const buy: [Item, string][] = [], cant: [Item, string][] = [];
   open.forEach((i) => {
     const ci = cartInfo(i);

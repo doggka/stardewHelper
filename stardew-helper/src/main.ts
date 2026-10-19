@@ -3,13 +3,19 @@ import { DOW, SEASON_RU } from './data/constants';
 import { S, load, progress, sanitize, save } from './state';
 import { cartToday, dow, nextCart, setDone, totals } from './logic/status';
 import { esc, filterBarHTML, openLoc } from './ui/html';
-import { renderTrackerBody } from './screens/tracker';
+import { clearRecent, markRecent, renderTrackerBody } from './screens/tracker';
 import { bridge, isDesktop, openExternal } from './bridge';
 
 const shell = document.getElementById('shell') as HTMLElement;
 
-/** Меню «⋯». Не в состоянии: открытость не должна переживать перезапуск. */
+/** Меню «⋯» и выбор способа запуска. Не в состоянии: открытость
+ *  не должна переживать перезапуск. */
 let menuOpen = false;
+let playOpen = false;
+
+/** Что нашлось в системе. Спрашиваем один раз при старте, не на каждый рендер. */
+let gameFound = false;
+let smapiOk = false;
 
 /** Подпись у первой вкладки — она единственная не говорит, что внутри. */
 const TABS: [string, string, string?][] = [
@@ -59,6 +65,35 @@ function trackerChrome(): string {
     + '<button data-w="rain"' + (S.weather === 'rain' ? ' class="on"' : '') + '>☔ Дождь</button>'
     + '</div>' + peek + '</div>';
 
+  // Составная кнопка запуска: слева основное действие, справа выбор способа.
+  // Прямой запуск exe идёт мимо Steam, поэтому «через Steam» — отдельный пункт,
+  // а не выкинутый вариант.
+  const LAUNCH: [string, string, string][] = [
+    ['smapi', 'Через SMAPI', 'с модами'],
+    ['direct', 'Напрямую', 'без модов'],
+    ['steam', 'Через Steam', 'как обычно, со статистикой'],
+  ];
+  const curLaunch = LAUNCH.find((l) => l[0] === S.launchMode) ?? LAUNCH[0];
+  const play = isDesktop && gameFound
+    ? '<div class="menuwrap playwrap">'
+      + '<button class="play" data-act="play" title="' + esc(curLaunch[1]) + '">▶ Играть</button>'
+      + '<button class="playmore" data-act="playMenu" aria-haspopup="true"'
+      + ' aria-expanded="' + playOpen + '" aria-label="Чем запускать">▾</button>'
+      + (playOpen
+          ? '<div class="menu" role="menu">'
+            + LAUNCH.map(([k, n, sub]) => {
+              const off = k === 'smapi' && !smapiOk;
+              return '<button role="menuitem" data-act="setLaunch" data-mode="' + k + '"'
+                + (off ? ' disabled title="SMAPI не установлен"' : '')
+                + (S.launchMode === k ? ' class="cur"' : '') + '>'
+                + (S.launchMode === k ? '✓ ' : '') + n
+                + '<small>' + (off ? 'SMAPI не установлен' : sub) + '</small></button>';
+            }).join('')
+            + '</div>'
+          : '')
+      + '</div>'
+    : '';
+
   // Служебное — в меню: этим пользуются раз в месяц, а места в шапке
   // оно занимало наравне с тем, на что смотришь каждую минуту.
   const menu = '<div class="menuwrap">'
@@ -89,7 +124,7 @@ function trackerChrome(): string {
     + '<div class="bar"><i style="width:' + (t.ok / t.n * 100) + '%"></i></div>'
     + '<span class="cartday">' + cartLine + '</span>'
     + (savedCount ? '<span class="dimnote">отмечено ' + manualCount + ', из сейва ' + savedCount + '</span>' : '')
-    + '<span class="ctx-sp"></span>' + when + menu + '</div>'
+    + '<span class="ctx-sp"></span>' + when + play + menu + '</div>'
     + '<div class="searchrow' + (S.q ? ' active' : '') + '">'
     + '<span class="sicon" aria-hidden="true">🔎</span>'
     + '<input type="search" id="q" aria-label="Поиск предмета"'
@@ -142,11 +177,23 @@ function restoreFocus(key: string | null, caret: number | null): void {
   if (caret !== null && el instanceof HTMLInputElement) el.setSelectionRange(caret, caret);
 }
 
+/**
+ * Анимация появления нужна при переходе между экранами, а не при каждой
+ * перерисовке. Раньше класс .screen вешался всегда, элемент создавался
+ * заново — и браузер играл fade с нуля на каждую галочку. Это и было моргание.
+ */
+let lastScreen: string | null = null;
+function screenClass(): string {
+  const changed = lastScreen !== S.screen;
+  lastScreen = S.screen;
+  return changed ? ' class="screen"' : '';
+}
+
 export function render(): void {
   const sy = shell.scrollTop;
   const { key, caret } = focusKey();
   if (S.screen === 'tracker') {
-    shell.innerHTML = '<div class="screen">' + trackerChrome() + '</div>';
+    shell.innerHTML = '<div' + screenClass() + '>' + trackerChrome() + '</div>';
     shell.scrollTop = sy;
     restoreFocus(key, caret);
   } else {
@@ -158,7 +205,7 @@ export function render(): void {
 let onboarding: typeof import('./screens/onboarding') | null = null;
 async function renderOnboarding(): Promise<void> {
   if (!onboarding) onboarding = await import('./screens/onboarding');
-  shell.innerHTML = '<div class="screen">' + (await onboarding.screenHTML()) + '</div>';
+  shell.innerHTML = '<div' + screenClass() + '>' + (await onboarding.screenHTML()) + '</div>';
 }
 
 /* ===================== СОБЫТИЯ ===================== */
@@ -177,6 +224,8 @@ document.addEventListener('change', (e) => {
   const id = el.dataset.chk;
   if (!id) return;
   setDone(id, el.checked);
+  // отмеченное остаётся на месте зачёркнутым до смены вкладки
+  if (el.checked) markRecent(id);
   save(); render();
 });
 
@@ -185,8 +234,9 @@ document.addEventListener('click', (e) => {
   const d = el.dataset;
 
   // клик мимо открытого меню — закрыть и ничего больше не делать
-  if (menuOpen && !el.closest('.menuwrap')) {
+  if ((menuOpen || playOpen) && !el.closest('.menuwrap')) {
     menuOpen = false;
+    playOpen = false;
     render();
     return;
   }
@@ -221,7 +271,7 @@ document.addEventListener('click', (e) => {
     save(); render(); return;
   }
   if (d.w) { S.weather = d.w as 'sun' | 'rain'; save(); render(); return; }
-  if (d.t) { S.tab = d.t; save(); render(); shell.scrollTop = 0; return; }
+  if (d.t) { S.tab = d.t; clearRecent(); save(); render(); shell.scrollTop = 0; return; }
   if (d.act) { void action(d.act, el); return; }
 });
 
@@ -259,9 +309,21 @@ document.addEventListener('input', (e) => {
 });
 
 async function action(name: string, el: HTMLElement): Promise<void> {
-  if (name === 'menu') { menuOpen = !menuOpen; render(); return; }
+  if (name === 'menu') { menuOpen = !menuOpen; playOpen = false; render(); return; }
+  if (name === 'playMenu') { playOpen = !playOpen; menuOpen = false; render(); return; }
   // любое действие из меню его же и закрывает
   if (menuOpen) menuOpen = false;
+  if (playOpen) playOpen = false;
+
+  if (name === 'setLaunch') {
+    const m = el.closest<HTMLElement>('[data-mode]')?.dataset.mode;
+    if (m) S.launchMode = m;
+    save();
+    render();
+    void launch();
+    return;
+  }
+  if (name === 'play') { await launch(); return; }
 
   if (name === 'backToSave') {
     if (S.save) { S.season = S.save.season; S.day = S.save.day; }
@@ -342,6 +404,35 @@ async function action(name: string, el: HTMLElement): Promise<void> {
   await onboarding.action(name, el);
 }
 
+async function launch(): Promise<void> {
+  if (!bridge) return;
+  const r = await bridge.game.launch(S.launchMode);
+  if (!r.ok) alert('Не удалось запустить игру: ' + (r.error || 'неизвестная причина'));
+}
+
+/**
+ * Вернулся из игры — перечитываем сейв. Иначе прогресс на экране старый,
+ * и надо вспоминать про кнопку «Обновить из сейва».
+ */
+function watchFocus(): void {
+  const b = bridge;
+  if (!b) return;
+  window.addEventListener('focus', () => {
+    if (!S.save || S.screen !== 'tracker') return;
+    void (async () => {
+      const fresh = await b.saves.read(S.save!.id);
+      if (!fresh || !fresh.bundlesSupported) return;
+      const before = JSON.stringify(S.save!.progress) + S.save!.day + S.save!.season;
+      const after = JSON.stringify(fresh.progress) + fresh.day + fresh.season;
+      if (before === after) return;
+      if (!onboarding) onboarding = await import('./screens/onboarding');
+      onboarding.applySave(fresh);
+      save();
+      render();
+    })();
+  });
+}
+
 /* ===================== СТАРТ ===================== */
 
 // Ручка для отладки: в сборке её нет, в дев-режиме через неё удобно
@@ -360,3 +451,13 @@ if (import.meta.env.DEV) {
 load();
 if (!isDesktop) S.screen = 'tracker'; // в браузере онбординг не нужен: сейвы недоступны
 render();
+watchFocus();
+
+// путь к игре спрашиваем один раз: от него зависит, показывать ли «Играть»
+if (bridge) {
+  void bridge.game.detect().then((g) => {
+    gameFound = !!g.path;
+    smapiOk = g.smapiInstalled;
+    if (gameFound) render();
+  });
+}

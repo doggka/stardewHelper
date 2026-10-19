@@ -137,6 +137,8 @@ function registerIpc() {
     }
   });
 
+  ipcMain.handle('game:launch', (_e, mode: string) => launchGame(mode));
+
   ipcMain.handle('game:dropDir', () => dropDir());
   ipcMain.handle('game:openDropDir', () => {
     const d = dropDir();
@@ -147,6 +149,46 @@ function registerIpc() {
     }
     return shell.openPath(d);
   });
+}
+
+/* ---- запуск игры ---- */
+
+const STEAM_APP_ID = '413150';
+
+/**
+ * Запуск одним из трёх способов. Прямой запуск exe идёт мимо Steam —
+ * оверлей и учёт времени в игре работать не будут, поэтому вариант
+ * «через Steam» оставлен отдельным пунктом, а не выкинут.
+ */
+function launchGame(mode: string): { ok: boolean; error?: string; cmd?: string } {
+  if (mode === 'steam') {
+    void shell.openExternal('steam://rungameid/' + STEAM_APP_ID);
+    return { ok: true, cmd: 'steam://rungameid/' + STEAM_APP_ID };
+  }
+
+  const game = detectGame();
+  if (!game.path) return { ok: false, error: 'папка с игрой не найдена' };
+
+  const exe = mode === 'smapi'
+    ? path.join(game.path, 'StardewModdingAPI.exe')
+    : path.join(game.path, 'Stardew Valley.exe');
+
+  if (!fs.existsSync(exe)) {
+    return {
+      ok: false,
+      error: mode === 'smapi'
+        ? 'StardewModdingAPI.exe не найден — SMAPI не установлен'
+        : 'Stardew Valley.exe не найден',
+    };
+  }
+
+  try {
+    // cwd — папка игры: иначе она не находит свой Content
+    spawn(exe, [], { cwd: game.path, detached: true, stdio: 'ignore' }).unref();
+    return { ok: true, cmd: exe };
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
 }
 
 /* ---- запуск бутстрапа с перехватом вывода ---- */

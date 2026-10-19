@@ -322,7 +322,7 @@ function refreshModChips(): void {
  * Переносим прогресс из сейва в отметки трекера.
  * Ручные галочки сейва не перетирают: объединяем, а не заменяем.
  */
-function applySave(s: SaveSummary): void {
+export function applySave(s: SaveSummary): void {
   S.saveId = s.id;
   S.save = s;
   S.season = s.season;

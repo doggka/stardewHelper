@@ -16,6 +16,8 @@ export interface AppState {
   save: SaveSummary | null;
   /** показывали ли уже экран модов */
   modsSeen: boolean;
+  /** чем запускать игру: 'smapi' | 'direct' | 'steam' */
+  launchMode: string;
 
   season: Season;
   day: number;
@@ -39,7 +41,7 @@ const OLD_KEY = 'sdv-bundles-v1';
 
 function defaults(): AppState {
   return {
-    screen: 'welcome', saveId: 'manual', save: null, modsSeen: false,
+    screen: 'welcome', saveId: 'manual', save: null, modsSeen: false, launchMode: 'smapi',
     season: 0, day: 1, weather: 'sun', tab: 'todo', q: '',
     y1guarantee: false, filters: [], hideDone: false, locFilter: null,
     openSrc: [],
@@ -77,6 +79,7 @@ export function sanitize(s: AppState): void {
       s.bySave[k] = { checked: {} };
     }
   }
+  if (['smapi', 'direct', 'steam'].indexOf(s.launchMode) < 0) s.launchMode = 'smapi';
   if (typeof s.saveId !== 'string' || !s.saveId) s.saveId = 'manual';
   if (s.save && typeof s.save !== 'object') s.save = null;
 }
