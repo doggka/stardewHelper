@@ -43,6 +43,36 @@ export function knownItem(q: string): string | null {
   return i >= 0 ? KNOWN[i] : null;
 }
 
+/**
+ * Поиск по названию. Раньше узелки искались по подстроке, а база предметов —
+ * только по точному совпадению, поэтому «анч» не находил «Анчоус»: срабатывал
+ * лишь разбор опечаток, и то случайно. Теперь обе части ищутся одинаково.
+ *
+ * Порядок: сначала то, что нужно для узелков (ради этого приложение и писалось),
+ * затем остальная база; совпадение с начала названия выше совпадения в середине,
+ * короткие названия выше длинных.
+ */
+export function findNames(q: string, limit = 12): string[] {
+  if (q.length < 2) return [];
+  const inBundles = new Set(BUNDLE_NAMES.map(norm));
+  const scored: [string, number][] = [];
+  const seen = new Set<string>();
+
+  for (let i = 0; i < KNOWN.length; i++) {
+    const n = KNOWN_NORM[i];
+    const at = n.indexOf(q);
+    if (at < 0) continue;
+    const name = KNOWN[i];
+    if (seen.has(name)) continue;
+    seen.add(name);
+    // меньше — выше
+    const rank = (inBundles.has(n) ? 0 : 100) + (at === 0 ? 0 : 10) + Math.min(n.length, 9);
+    scored.push([name, rank]);
+  }
+  scored.sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0], 'ru'));
+  return scored.slice(0, limit).map((x) => x[0]);
+}
+
 export function suggest(q: string): string[] {
   const lim = q.length <= 5 ? 1 : q.length <= 9 ? 2 : 3;
   const out: [string, number][] = [];
