@@ -151,21 +151,10 @@ button:disabled:hover{background:transparent;border-color:var(--line)}
 
 main{padding:14px 32px 44px;max-width:1180px;margin:0 auto}
 
-/* ---------- фильтры ---------- */
-.legend{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 12px;align-items:center}
-.hd{display:flex;gap:7px;align-items:center;cursor:pointer;font-size:12.5px;
-  color:var(--dim);margin-left:4px}
-.hd input{accent-color:var(--acc);width:15px;height:15px}
-.legend .pill{background:var(--card);border:1px solid var(--line);color:var(--ink);
-  border-radius:999px;padding:3px 11px;font-size:12.5px}
-.legend #fclear{padding:4px 10px;font-size:12.5px}
-.legend .b{cursor:pointer;user-select:none;background:var(--card);color:var(--dim);
-  border-color:var(--line)}
-.legend .b:hover{color:var(--ink);border-color:var(--faint)}
-.legend .b.sel{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
-.legend .b.zero{opacity:.3;cursor:default}
-.legend .b.zero:hover{color:var(--dim);border-color:var(--line)}
-.legend .cnt{margin-left:6px;opacity:.7}
+/* ---------- фильтры ----------
+   Ряда чипов со статусами здесь больше нет: он дублировал блок «Сегодня»
+   и подсветку строк, а по нажатию скрывал содержимое. Осталась одна
+   полоса — про поиск и про фильтр по локации. */
 .fbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 20px;
   font-size:12.5px;color:var(--dim)}
 .fbar .pill{background:var(--card);border:1px solid var(--line);color:var(--ink);
@@ -175,8 +164,6 @@ main{padding:14px 32px 44px;max-width:1180px;margin:0 auto}
 .fbar .pill.on{background:#3a2e18;border-color:var(--last);color:var(--ink)}
 .fbar .fclear{border-color:var(--last);color:var(--last)}
 .fbar .fclear:hover{background:#3a2e18;color:var(--ink)}
-.fbar label{display:flex;gap:7px;align-items:center;cursor:pointer}
-.fbar input{accent-color:var(--acc);width:15px;height:15px}
 .fbar.searching .pill{display:flex;gap:8px;align-items:center}
 .fbar.searching .pill button{background:none;border:0;color:var(--ink);padding:0 2px;
   font-size:13px;line-height:1}

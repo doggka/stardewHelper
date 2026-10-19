@@ -25,7 +25,6 @@ export interface AppState {
   tab: string;
   q: string;
   y1guarantee: boolean;
-  filters: string[];
   hideDone: boolean;
   locFilter: string | null;
   /** id предметов с раскрытым «где добывать» — в состоянии, а не классом на узле,
@@ -56,7 +55,7 @@ function defaults(): AppState {
   return {
     screen: 'welcome', saveId: 'manual', save: null, modsSeen: false, launchMode: 'smapi',
     season: 0, day: 1, weather: 'sun', tab: 'rooms', q: '',
-    y1guarantee: false, filters: [], hideDone: false, locFilter: null,
+    y1guarantee: false, hideDone: false, locFilter: null,
     openSrc: [], openBundles: [], todayOpen: [],
     bySave: {},
   };
@@ -80,7 +79,9 @@ export function sanitize(s: AppState): void {
   if (SCREENS.indexOf(s.screen) < 0) s.screen = 'tracker';
   if (TABS.indexOf(s.tab) < 0) s.tab = 'rooms';
   if (typeof s.q !== 'string') s.q = '';
-  if (!Array.isArray(s.filters)) s.filters = [];
+  // фильтра по статусу больше нет; у старых состояний поле просто удаляем,
+  // иначе оно так и будет ездить в localStorage
+  delete (s as unknown as Record<string, unknown>).filters;
   if (!Array.isArray(s.openSrc)) s.openSrc = [];
   if (!Array.isArray(s.openBundles)) s.openBundles = [];
   if (!Array.isArray(s.todayOpen)) s.todayOpen = [];

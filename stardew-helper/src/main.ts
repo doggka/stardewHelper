@@ -107,6 +107,11 @@ function trackerChrome(): string {
           + (isDesktop ? '<button role="menuitem" data-act="chooseSave">'
               + (S.save ? 'Сменить сейв' : 'Выбрать сейв') + '</button>' : '')
           + '<div class="msep"></div>'
+          // переехало из шапки вместе с чипами-фильтрами: меняет работу
+          // со списком, но нажимается редко
+          + '<button role="menuitem" data-act="hideDone">'
+          + (S.hideDone ? '✓ ' : '') + 'Скрыть собранное</button>'
+          + '<div class="msep"></div>'
           + '<button role="menuitem" data-t="plan">План по сезонам</button>'
           + '<button role="menuitem" data-t="cart">🛒 Торговка</button>'
           + (isDesktop ? '<button role="menuitem" data-act="mods">Моды</button>' : '')
@@ -263,16 +268,9 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (d.ext) { openExternal(d.ext); return; }
-  if (el.id === 'fclear') { S.filters = []; S.hideDone = false; S.locFilter = null; save(); render(); return; }
-  if (d.f !== undefined) {
-    if (hit.classList.contains('zero')) return;
-    const i = S.filters.indexOf(d.f);
-    if (i >= 0) S.filters.splice(i, 1);
-    else S.filters.push(d.f);
-    save(); render(); return;
-  }
+  if (el.id === 'fclear') { S.locFilter = null; save(); render(); return; }
   if (d.locfilter) {
-    S.locFilter = d.locfilter; S.tab = 'rooms'; S.filters = [];
+    S.locFilter = d.locfilter; S.tab = 'rooms';
     document.getElementById('mask')?.remove();
     save(); render(); shell.scrollTop = 0; return;
   }
@@ -404,7 +402,6 @@ async function action(name: string, el: HTMLElement): Promise<void> {
     S.bySave = {};
     S.saveId = 'manual';
     S.save = null;
-    S.filters = [];
     S.hideDone = false;
     S.locFilter = null;
     S.q = '';
@@ -417,6 +414,7 @@ async function action(name: string, el: HTMLElement): Promise<void> {
     return;
   }
   if (name === 'cartInfo') { S.tab = 'cart'; save(); render(); shell.scrollTop = 0; return; }
+  if (name === 'hideDone') { S.hideDone = !S.hideDone; menuOpen = false; save(); render(); return; }
 
   if (name === 'clearSearch') {
     S.q = '';

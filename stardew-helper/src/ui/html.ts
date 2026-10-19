@@ -1,9 +1,9 @@
 import type { Bundle, Item, Room, Status } from '../types';
-import { LVL, LVL_NAME, LVL_ORDER, SEASON_RU, WIKI } from '../data/constants';
+import { LVL, SEASON_RU, WIKI } from '../data/constants';
 import { LOC } from '../data/locations';
 import { ALL, S, progress } from '../state';
 import { bprog, cartInfo, done, effLoc, hasLoc, st } from '../logic/status';
-import { countsByLvl, filterActive, visible } from '../logic/filters';
+import { visible } from '../logic/filters';
 import { enough, have, haveText } from '../logic/have';
 
 export const esc = (s: unknown): string =>
@@ -147,37 +147,30 @@ export const suggHTML = (list: string[]): string =>
   !list.length ? '' : '<div class="sugg">' + list.map((n) => '<button data-sugg="' + esc(n) + '">' + esc(n) + '</button>').join('') + '</div>';
 
 /* ---- панель фильтров ---- */
+/**
+ * Ряда чипов со статусами здесь больше нет. Он дублировал блок «Сегодня»
+ * и подсветку строк, два чипа из шести всегда показывали ноль, а по нажатию
+ * он не показывал, а скрывал — вплоть до пропажи целых комнат. Дважды это
+ * выглядело как поломка.
+ *
+ * Осталось то, что включаешь осознанно и видишь, что включил:
+ * фильтр по локации и «скрыть собранное».
+ */
 export function filterBarHTML(): string {
   if (S.tab === 'plan') return '';
-  // во время поиска счётчики считают весь набор, а не результаты — они бы врали;
-  // и вкладка больше не описывает то, что на экране
   if (S.q) {
     return '<div class="fbar searching"><span class="pill">Поиск: ' + esc(S.q)
       + ' <button type="button" data-act="clearSearch" aria-label="Сбросить поиск">✕</button></span>'
-      + '<span class="sb-meta">вкладки и фильтры отключены, пока идёт поиск</span></div>';
+      + '<span class="sb-meta">фильтры отключены, пока идёт поиск</span></div>';
   }
-  const c = countsByLvl();
-  let h = '<div class="legend" role="group" aria-label="Фильтр по статусу">';
-  LVL_ORDER.forEach((k) => {
-    const sel = S.filters.indexOf(k) >= 0, z = c[k] === 0 && !sel;
-    h += '<button type="button" class="b ' + k + (sel ? ' sel' : '') + (z ? ' zero' : '') + '"'
-      + ' data-f="' + k + '" aria-pressed="' + sel + '"' + (z ? ' disabled' : '') + '>'
-      + (sel ? '✓ ' : '') + LVL_NAME[k] + '<span class="cnt">' + c[k] + '</span></button>';
-  });
-  // «скрыть собранное» и сброс живут в той же строке, что и чипы:
-  // отдельная полоса под ними съедала высоту ради одного флажка
-  h += '<label class="hd"><input type="checkbox" id="hd" ' + (S.hideDone ? 'checked' : '') + '>скрыть собранное</label>';
-  if (S.locFilter && LOC[S.locFilter]) h += '<span class="pill">📍 только: ' + esc(LOC[S.locFilter].n) + '</span>';
-  if (filterActive()) {
-    const tot = ALL.filter((i) => !i.bundle.room.extra).length;
-    const vis = ALL.filter((i) => !i.bundle.room.extra && visible(i)).length;
-    // заметно: при активном фильтре комнаты без подходящих узелков
-    // пропадают целиком, и это легко принять за поломку
-    h += '<span class="pill on">фильтр включён · показано ' + vis + ' из ' + tot + '</span>'
-      + '<button id="fclear" class="fclear">× сбросить фильтр</button>';
-  }
-  h += '</div>';
-  return h;
+  if (!S.locFilter || !LOC[S.locFilter]) return '';
+
+  const tot = ALL.filter((i) => !i.bundle.room.extra).length;
+  const vis = ALL.filter((i) => !i.bundle.room.extra && visible(i)).length;
+  return '<div class="fbar">'
+    + '<span class="pill on">📍 только: ' + esc(LOC[S.locFilter].n)
+    + ' · показано ' + vis + ' из ' + tot + '</span>'
+    + '<button id="fclear" class="fclear">× показать всё</button></div>';
 }
 
 /* ---- модалка локации ---- */
