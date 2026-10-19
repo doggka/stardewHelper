@@ -61,6 +61,18 @@ dotnet build -c Release
 | Ассортимент | `StardewValley.Internal.ShopBuilder.GetShopStock(shopId)` |
 | Цена и количество | `ItemStockInformation.Price`, `.Stock` |
 
+Для справочника узелков используются ещё два:
+
+| Что | 1.6 |
+|---|---|
+| Состав узелков этого сейва | `Game1.netWorldState.Value.BundleData` |
+| Название предмета по id | `ItemRegistry.GetData(itemId).DisplayName` |
+
 Если после обновления игры мод перестанет собираться — скорее всего снова
-переименовали. Утилита `../.toolchain/apiprobe` печатает реальные сигнатуры
-из сборки игры.
+переименовали. Утилита `apiprobe` печатает реальные сигнатуры из сборки
+игры:
+
+```powershell
+$env:Path = "..\..\.toolchain\dotnet;" + $env:Path
+dotnet run -c Release --project apiprobe
+```
