@@ -20,7 +20,11 @@ export interface Bridge {
   game: {
     detect(): Promise<GameInfo>;
     mods(): Promise<ModInfo[]>;
-    runBootstrap(): Promise<{ started: boolean; error?: string }>;
+    runBootstrap(opts: { mode: 'dry' | 'install'; openNexus?: boolean }): Promise<{ started: boolean; error?: string }>;
+    cancelBootstrap(): Promise<boolean>;
+    bootstrapInConsole(): Promise<{ started: boolean; error?: string }>;
+    onLine(cb: (line: string, isErr: boolean) => void): void;
+    onDone(cb: (code: number) => void): void;
   };
 }
 
@@ -72,6 +76,10 @@ if (import.meta.env.DEV && location.search.includes('mock') && !window.sdv) {
         { key: 'DataLayers', name: 'Data Layers', installed: false, version: null },
       ],
       runBootstrap: async () => ({ started: false, error: 'заглушка' }),
+      cancelBootstrap: async () => false,
+      bootstrapInConsole: async () => ({ started: false, error: 'заглушка' }),
+      onLine: () => {},
+      onDone: () => {},
     },
   };
 }

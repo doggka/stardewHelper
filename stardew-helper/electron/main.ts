@@ -109,25 +109,98 @@ function registerIpc() {
 
   ipcMain.handle('game:detect', () => detectGame());
   ipcMain.handle('game:mods', () => listMods(detectGame()));
-  ipcMain.handle('game:runBootstrap', () => {
-    // В собранном приложении скрипт лежит в resources рядом с asar:
-    // из самого asar PowerShell читать не умеет.
-    const candidates = app.isPackaged
-      ? [path.join(process.resourcesPath, 'install-mods.ps1')]
-      : [path.join(ROOT, 'install-mods.ps1')];
-    const script = candidates.find((p) => fs.existsSync(p));
-    if (!script) return { started: false, error: 'install-mods.ps1 не найден: ' + candidates.join(', ') };
+  ipcMain.handle('game:runBootstrap', (_e, opts: { mode?: string; openNexus?: boolean } = {}) =>
+    runBootstrap(opts),
+  );
+  ipcMain.handle('game:cancelBootstrap', () => {
+    if (!bootstrap) return false;
+    bootstrap.kill();
+    bootstrap = null;
+    return true;
+  });
+  ipcMain.handle('game:bootstrapInConsole', () => {
+    const script = bootstrapScript();
+    if (!script) return { started: false, error: 'install-mods.ps1 не найден' };
     try {
-      // отдельное окно PowerShell: установка идёт на глазах, а не молча в фоне
-      spawn('powershell.exe', ['-NoExit', '-ExecutionPolicy', 'Bypass', '-File', script], {
+      // cmd /c start — единственный надёжный способ получить настоящую консоль
+      // с рабочим вводом: напрямую spawn даёт процесс без доступного stdin.
+      spawn('cmd.exe', ['/c', 'start', '"Установка модов"', 'powershell.exe',
+        '-NoExit', '-ExecutionPolicy', 'Bypass', '-File', script], {
         detached: true,
         stdio: 'ignore',
+        windowsVerbatimArguments: true,
       }).unref();
       return { started: true };
     } catch (err) {
       return { started: false, error: String(err) };
     }
   });
+}
+
+/* ---- запуск бутстрапа с перехватом вывода ---- */
+
+let bootstrap: ReturnType<typeof spawn> | null = null;
+
+function bootstrapScript(): string | null {
+  // В собранном приложении скрипт лежит в resources рядом с asar:
+  // из самого asar PowerShell читать не умеет.
+  const candidates = app.isPackaged
+    ? [path.join(process.resourcesPath, 'install-mods.ps1')]
+    : [path.join(ROOT, 'install-mods.ps1')];
+  return candidates.find((p) => fs.existsSync(p)) ?? null;
+}
+
+function runBootstrap(opts: { mode?: string; openNexus?: boolean }): { started: boolean; error?: string } {
+  if (bootstrap) return { started: false, error: 'установка уже идёт' };
+  const script = bootstrapScript();
+  if (!script) return { started: false, error: 'install-mods.ps1 не найден рядом с приложением' };
+
+  // Режим задаётся строкой и только явное 'install' ставит моды. Любая другая
+  // величина — включая потерянный при передаче объект — даёт сухой прогон.
+  // Раньше здесь был булев флаг, и его пропажа молча превращалась в установку.
+  const install = opts?.mode === 'install';
+
+  const args = ['-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', script];
+  args.push(install ? '-Yes' : '-DryRun');
+  if (opts?.openNexus) args.push('-OpenNexus');
+
+  const send = (channel: string, payload: unknown) => win?.webContents.send(channel, payload);
+
+  try {
+    // Первой строкой печатаем саму команду: иначе невозможно понять,
+    // в каком режиме скрипт реально запустился.
+    send('bootstrap:line', { line: '> powershell ' + args.join(' '), isErr: false });
+
+    const child = spawn('powershell.exe', args, { windowsHide: true });
+    bootstrap = child;
+
+    // Строки отдаём в окно по мере появления, чтобы лог бежал, а не падал пачкой.
+    let tail = '';
+    const pump = (buf: Buffer, isErr: boolean) => {
+      tail += buf.toString('utf8');
+      const lines = tail.split(/\r?\n/);
+      tail = lines.pop() ?? '';
+      for (const line of lines) send('bootstrap:line', { line, isErr });
+    };
+    child.stdout?.on('data', (b: Buffer) => pump(b, false));
+    child.stderr?.on('data', (b: Buffer) => pump(b, true));
+
+    child.on('error', (err) => {
+      send('bootstrap:line', { line: 'Не удалось запустить PowerShell: ' + String(err), isErr: true });
+      send('bootstrap:done', { code: -1 });
+      bootstrap = null;
+    });
+    child.on('close', (code) => {
+      if (tail) send('bootstrap:line', { line: tail, isErr: false });
+      send('bootstrap:done', { code });
+      bootstrap = null;
+    });
+
+    return { started: true };
+  } catch (err) {
+    bootstrap = null;
+    return { started: false, error: String(err) };
+  }
 }
 
 /* ---- список папок с сейвами, переживает перезапуск ---- */

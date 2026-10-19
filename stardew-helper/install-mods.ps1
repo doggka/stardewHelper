@@ -1,5 +1,9 @@
 ﻿# Бутстрап модов Stardew Valley.
 #
+# Два режима:
+#   - запуск руками: задаёт вопросы, как обычный установщик
+#   - запуск из приложения (-Yes / -DryRun): вопросов не задаёт, пишет лог в stdout
+#
 # Что делает сам:
 #   - находит игру через библиотеки Steam
 #   - ставит SMAPI и UI Info Suite 2 с GitHub
@@ -10,12 +14,41 @@
 #
 # Прав администратора не требует. Повторный запуск безопасен.
 
+param(
+    [string]$GamePath,
+    [switch]$Yes,
+    [switch]$OpenNexus,
+    [switch]$DryRun
+)
+
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
-chcp 65001 > $null
 
-function Say($text, $color = 'Gray') { Write-Host $text -ForegroundColor $color }
-function Head($text) { Write-Host ''; Write-Host "=== $text ===" -ForegroundColor Yellow }
+# Приложение читает наш вывод как UTF-8, поэтому фиксируем кодировку.
+try {
+    [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+    $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+} catch { }
+
+# В неинтерактивном режиме вывод идёт через Write-Output: Write-Host завязан
+# на консоль, и при перехвате потока его можно не увидеть.
+$script:Quiet = $Yes -or $DryRun
+
+function Say($text, $color = 'Gray') {
+    if ($script:Quiet) { Write-Output $text }
+    else { Write-Host $text -ForegroundColor $color }
+}
+function Head($text) {
+    if ($script:Quiet) { Write-Output ''; Write-Output "=== $text ===" }
+    else { Write-Host ''; Write-Host "=== $text ===" -ForegroundColor Yellow }
+}
+function Ask($text) {
+    if ($script:Quiet) { return $true }
+    $a = Read-Host $text
+    return ($a -match '^[yYдД]')
+}
+
+if ($DryRun) { Say 'РЕЖИМ ПРОВЕРКИ: ничего не скачивается и не устанавливается.' Yellow }
 
 Head 'Поиск игры'
 
@@ -41,9 +74,14 @@ function Find-Game {
     return $null
 }
 
-$game = Find-Game
-if (-not $game) {
+$game = if ($GamePath) { $GamePath } else { Find-Game }
+
+if (-not $game -or -not (Test-Path (Join-Path $game 'Stardew Valley.exe'))) {
     Say 'Игру найти не удалось.' Red
+    if ($script:Quiet) {
+        Say 'Укажи путь к папке с Stardew Valley.exe и запусти ещё раз.' Yellow
+        exit 2
+    }
     $game = Read-Host 'Укажи папку с Stardew Valley.exe'
     if (-not (Test-Path (Join-Path $game 'Stardew Valley.exe'))) {
         Say 'В этой папке нет Stardew Valley.exe. Выходим.' Red
@@ -52,14 +90,15 @@ if (-not $game) {
 }
 Say "Игра: $game" Green
 
-$answer = Read-Host 'Продолжить? (y/n)'
-if ($answer -notmatch '^[yYдД]') { Say 'Отменено.'; exit 0 }
+if (-not (Ask 'Продолжить? (y/n)')) { Say 'Отменено.'; exit 0 }
 
 $mods = Join-Path $game 'Mods'
 $work = Join-Path $PSScriptRoot 'bootstrap-temp'
 $drop = Join-Path $PSScriptRoot 'drop'
-New-Item -ItemType Directory -Force $work | Out-Null
-New-Item -ItemType Directory -Force $drop | Out-Null
+if (-not $DryRun) {
+    New-Item -ItemType Directory -Force $work | Out-Null
+    New-Item -ItemType Directory -Force $drop | Out-Null
+}
 
 function Get-LatestAsset($repo, $pattern) {
     $rel = Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest" -Headers @{ 'User-Agent' = 'stardew-helper' }
@@ -75,26 +114,30 @@ if (Test-Path (Join-Path $game 'StardewModdingAPI.exe')) {
 } else {
     try {
         $a = Get-LatestAsset 'Pathoschild/SMAPI' 'SMAPI-*-installer.zip'
-        Say "Качаю $($a.Name) ($($a.Tag))"
-        $zip = Join-Path $work $a.Name
-        Invoke-WebRequest $a.Url -OutFile $zip -UseBasicParsing
-        $out = Join-Path $work 'smapi'
-        Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
-        Expand-Archive $zip -DestinationPath $out -Force
-        $inst = Get-ChildItem $out -Recurse -Filter 'SMAPI*installer*.exe' | Select-Object -First 1
-        if (-not $inst) { $inst = Get-ChildItem $out -Recurse -Filter 'install*.exe' | Select-Object -First 1 }
-        if (-not $inst) { throw 'не нашёл установщик внутри архива' }
-        Say 'Запускаю установщик SMAPI...'
-        & $inst.FullName --install --game-path $game --no-prompt
-        if (Test-Path (Join-Path $game 'StardewModdingAPI.exe')) { Say 'SMAPI установлен.' Green }
-        else { Say 'Установщик отработал, но StardewModdingAPI.exe не появился — проверь вывод выше.' Red }
+        if ($DryRun) {
+            Say "Скачал бы $($a.Name) ($($a.Tag)) и запустил установщик с --game-path." Yellow
+        } else {
+            Say "Качаю $($a.Name) ($($a.Tag))"
+            $zip = Join-Path $work $a.Name
+            Invoke-WebRequest $a.Url -OutFile $zip -UseBasicParsing
+            $out = Join-Path $work 'smapi'
+            Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
+            Expand-Archive $zip -DestinationPath $out -Force
+            $inst = Get-ChildItem $out -Recurse -Filter 'SMAPI*installer*.exe' | Select-Object -First 1
+            if (-not $inst) { $inst = Get-ChildItem $out -Recurse -Filter 'install*.exe' | Select-Object -First 1 }
+            if (-not $inst) { throw 'не нашёл установщик внутри архива' }
+            Say 'Запускаю установщик SMAPI...'
+            & $inst.FullName --install --game-path $game --no-prompt 2>&1 | ForEach-Object { Say "  $_" }
+            if (Test-Path (Join-Path $game 'StardewModdingAPI.exe')) { Say 'SMAPI установлен.' Green }
+            else { Say 'Установщик отработал, но StardewModdingAPI.exe не появился.' Red }
+        }
     } catch {
         Say "Не получилось: $_" Red
         Say 'Можно поставить вручную: https://smapi.io/' Yellow
     }
 }
 
-New-Item -ItemType Directory -Force $mods | Out-Null
+if (-not $DryRun) { New-Item -ItemType Directory -Force $mods | Out-Null }
 
 # ---------------------------------------------------- Распаковка в Mods
 function Install-ModZip($zipPath) {
@@ -117,16 +160,20 @@ function Install-ModZip($zipPath) {
 Head 'UI Info Suite 2'
 try {
     $a = Get-LatestAsset 'Annosz/UIInfoSuite2' '*.zip'
-    Say "Качаю $($a.Name) ($($a.Tag))"
-    $zip = Join-Path $work $a.Name
-    Invoke-WebRequest $a.Url -OutFile $zip -UseBasicParsing
-    Install-ModZip $zip | Out-Null
+    if ($DryRun) {
+        Say "Скачал бы $($a.Name) ($($a.Tag)) и распаковал в Mods." Yellow
+    } else {
+        Say "Качаю $($a.Name) ($($a.Tag))"
+        $zip = Join-Path $work $a.Name
+        Invoke-WebRequest $a.Url -OutFile $zip -UseBasicParsing
+        Install-ModZip $zip | Out-Null
+    }
 } catch {
     Say "Не получилось: $_" Red
 }
 
 # ------------------------------------------------------------ С Nexus
-Head 'Эти три скачай руками'
+Head 'Эти скачай руками'
 $nexus = @(
     @{ n = 'NPC Map Locations'; u = 'https://www.nexusmods.com/stardewvalley/mods/239' },
     @{ n = 'UI Info Suite 2 Alternative (иконка торговки под узелки)'; u = 'https://www.nexusmods.com/stardewvalley/mods/43127' },
@@ -134,12 +181,14 @@ $nexus = @(
     @{ n = 'Data Layers'; u = 'https://www.nexusmods.com/stardewvalley/mods/1691' }
 )
 Say "Скачанные zip клади сюда: $drop" Yellow
-Say 'Потом запусти скрипт ещё раз — он их разложит.' Yellow
-Write-Host ''
+Say 'Потом запусти установку ещё раз — скрипт их разложит.' Yellow
 foreach ($m in $nexus) { Say "  $($m.n)"; Say "    $($m.u)" DarkGray }
 
-$open = Read-Host 'Открыть эти страницы в браузере? (y/n)'
-if ($open -match '^[yYдД]') { foreach ($m in $nexus) { Start-Process $m.u } }
+$doOpen = if ($script:Quiet) { [bool]$OpenNexus } else { Ask 'Открыть эти страницы в браузере? (y/n)' }
+if ($doOpen) {
+    if ($DryRun) { Say 'Открыл бы эти страницы в браузере.' Yellow }
+    else { foreach ($m in $nexus) { Start-Process $m.u } }
+}
 
 # --------------------------------------------------- Разбор папки drop
 Head 'Папка drop'
@@ -148,6 +197,7 @@ if (-not $zips) {
     Say 'Пусто — нечего раскладывать.'
 } else {
     foreach ($z in $zips) {
+        if ($DryRun) { Say "Распаковал бы $($z.Name) в Mods." Yellow; continue }
         Say "Распаковываю $($z.Name)"
         if (Install-ModZip $z.FullName) { Remove-Item $z.FullName -Force }
     }
@@ -166,13 +216,20 @@ if (Test-Path $mods) {
         }
         Say "  $($_.Name)$ver" Green
     }
+} else {
+    Say '  папки Mods пока нет'
 }
 
-Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
+if (-not $DryRun) { Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue }
 
-Write-Host ''
-Say 'Запускать игру теперь надо через SMAPI, а не напрямую.' Yellow
-Say 'В Steam: свойства игры -> параметры запуска -> путь к StardewModdingAPI.exe,' DarkGray
-Say 'либо просто запусти StardewModdingAPI.exe из папки игры.' DarkGray
-Write-Host ''
-Read-Host 'Enter для выхода'
+Say ''
+if ($DryRun) {
+    Say 'Это была проверка. Ничего не изменилось.' Yellow
+} else {
+    Say 'Запускать игру теперь надо через SMAPI, а не напрямую.' Yellow
+    Say 'В Steam: свойства игры -> параметры запуска -> путь к StardewModdingAPI.exe,'
+    Say 'либо просто запусти StardewModdingAPI.exe из папки игры.'
+}
+
+if (-not $script:Quiet) { Read-Host 'Enter для выхода' }
+exit 0

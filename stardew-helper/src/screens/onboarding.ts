@@ -121,13 +121,23 @@ async function modsHTML(): Promise<string> {
     + '<div class="panel" style="text-align:left">'
     + '<h2>Как установить</h2>'
     + '<p class="note" style="font-style:normal">'
-    + (gamePath ? 'Игра найдена: <b>' + esc(gamePath) + '</b><br>' : '<b>Игра не найдена</b> — укажешь путь в скрипте.<br>')
-    + 'SMAPI и UI Info Suite ставятся автоматически. Остальные три живут только на Nexus, '
+    + (gamePath ? 'Игра найдена: <b>' + esc(gamePath) + '</b><br>' : '<b>Игра не найдена</b> — тогда проверка это покажет.<br>')
+    + 'SMAPI и UI Info Suite ставятся автоматически. Остальные живут только на Nexus, '
     + 'и скачать их скриптом без логина нельзя — скрипт откроет страницы, ты скачаешь zip '
     + 'и кинешь в папку <code>drop</code>, а он разложит по <code>Mods</code>.</p>'
     + '<div class="actions" style="justify-content:flex-start;margin-top:10px">'
-    + '<button data-act="runBootstrap">Запустить установку</button>'
-    + '</div></div>'
+    + '<button data-act="bootstrapDry">Проверить</button>'
+    + '<button data-act="bootstrapRun" class="on">Установить</button>'
+    + '</div>'
+    + '<p class="note" style="margin-top:8px">'
+    + '<b>Проверить</b> — ничего не скачивает и не меняет: находит игру и показывает, '
+    + 'что было бы сделано. Лог виден прямо здесь.<br>'
+    + '<b>Установить</b> — открывает окно PowerShell и спрашивает подтверждение там. '
+    + 'В окне, а не здесь, потому что установщику SMAPI нужна настоящая консоль — '
+    + 'без неё он падает.</p>'
+    + '<div id="bootlog" class="bootlog" hidden></div>'
+    + '<div id="bootstatus" class="bootstatus" hidden></div>'
+    + '</div>'
     + '<div class="actions">'
     + '<button data-act="toTracker" class="on">Дальше, к трекеру</button>'
     + '</div></div>';
@@ -176,10 +186,30 @@ export async function action(name: string, el: HTMLElement): Promise<void> {
     return;
   }
 
-  if (name === 'runBootstrap') {
+  if (name === 'bootstrapDry') {
+    await startBootstrap();
+    return;
+  }
+
+  if (name === 'bootstrapRun') {
+    // Установщик SMAPI отказывается работать без настоящей консоли:
+    // «Cannot read keys when application does not have a console».
+    // Поэтому реальная установка идёт в окне PowerShell, а не внутри приложения.
     if (!bridge) return;
-    const r = await bridge.game.runBootstrap();
-    if (!r.started) alert('Не удалось запустить установку: ' + (r.error || 'неизвестная причина'));
+    const status = document.getElementById('bootstatus');
+    const r = await bridge.game.bootstrapInConsole();
+    if (status) {
+      status.hidden = false;
+      status.className = 'bootstatus ' + (r.started ? 'ok' : 'bad');
+      status.textContent = r.started
+        ? '✓ Открылось окно установки — отвечай на вопросы в нём. Установщику SMAPI нужна настоящая консоль, внутри приложения он не работает.'
+        : '✕ Не удалось открыть окно: ' + (r.error || 'неизвестная причина');
+    }
+    return;
+  }
+
+  if (name === 'bootstrapCancel') {
+    if (bridge) await bridge.game.cancelBootstrap();
     return;
   }
 
@@ -200,6 +230,72 @@ export async function action(name: string, el: HTMLElement): Promise<void> {
     const u = el.dataset.url;
     if (u) openExternal(u);
   }
+}
+
+/**
+ * Запуск бутстрапа с живым логом. Перерисовку экрана при этом не делаем:
+ * иначе панель с логом снесёт на первой же строке.
+ */
+async function startBootstrap(): Promise<void> {
+  if (!bridge) return;
+  const log = document.getElementById('bootlog');
+  const status = document.getElementById('bootstatus');
+  if (!log || !status) return;
+
+  log.textContent = '';
+  log.hidden = false;
+  status.hidden = false;
+  status.className = 'bootstatus running';
+  status.innerHTML = '⏳ идёт проверка… <button data-act="bootstrapCancel">Прервать</button>';
+  setButtons(true);
+
+  bridge.game.onLine((line, isErr) => {
+    const div = document.createElement('div');
+    if (isErr) div.className = 'err';
+    div.textContent = line;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+  });
+
+  bridge.game.onDone(async (code) => {
+    setButtons(false);
+    const ok = code === 0;
+    status.className = 'bootstatus ' + (ok ? 'ok' : 'bad');
+    status.textContent = ok
+      ? '✓ Проверка прошла. Ничего не изменилось.'
+      : '✕ Завершилось с кодом ' + code + '. Смотри лог выше.';
+    // перечитываем папку Mods: вдруг что-то поставилось в окне PowerShell
+    if (bridge) {
+      mods = await bridge.game.mods();
+      refreshModChips();
+    }
+  });
+
+  const r = await bridge.game.runBootstrap({ mode: 'dry' });
+  if (!r.started) {
+    setButtons(false);
+    status.className = 'bootstatus bad';
+    status.textContent = '✕ Не удалось запустить: ' + (r.error || 'неизвестная причина');
+  }
+}
+
+function setButtons(busy: boolean): void {
+  for (const act of ['bootstrapDry', 'bootstrapRun', 'bootstrapConsole']) {
+    const b = document.querySelector<HTMLButtonElement>('[data-act="' + act + '"]');
+    if (b) b.disabled = busy;
+  }
+}
+
+/** Обновляем отметки «стоит / нет» без перерисовки всего экрана. */
+function refreshModChips(): void {
+  document.querySelectorAll<HTMLElement>('.modcard').forEach((card, i) => {
+    const m = mods[i];
+    if (!m) return;
+    const chip = card.querySelector('.ok-chip, .no-chip');
+    if (!chip) return;
+    chip.className = m.installed ? 'ok-chip' : 'no-chip';
+    chip.textContent = m.installed ? '✓ стоит' + (m.version ? ' ' + m.version : '') : '— нет';
+  });
 }
 
 /**

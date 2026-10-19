@@ -27,7 +27,18 @@ const api = {
   game: {
     detect: (): Promise<unknown> => ipcRenderer.invoke('game:detect'),
     mods: (): Promise<unknown[]> => ipcRenderer.invoke('game:mods'),
-    runBootstrap: (): Promise<unknown> => ipcRenderer.invoke('game:runBootstrap'),
+    runBootstrap: (opts: { mode: 'dry' | 'install'; openNexus?: boolean }): Promise<unknown> =>
+      ipcRenderer.invoke('game:runBootstrap', { mode: opts?.mode, openNexus: !!opts?.openNexus }),
+    cancelBootstrap: (): Promise<boolean> => ipcRenderer.invoke('game:cancelBootstrap'),
+    bootstrapInConsole: (): Promise<unknown> => ipcRenderer.invoke('game:bootstrapInConsole'),
+    onLine: (cb: (line: string, isErr: boolean) => void) => {
+      ipcRenderer.removeAllListeners('bootstrap:line');
+      ipcRenderer.on('bootstrap:line', (_e, p: { line: string; isErr: boolean }) => cb(p.line, p.isErr));
+    },
+    onDone: (cb: (code: number) => void) => {
+      ipcRenderer.removeAllListeners('bootstrap:done');
+      ipcRenderer.on('bootstrap:done', (_e, p: { code: number }) => cb(p.code));
+    },
   },
 };
 
