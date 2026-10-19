@@ -11,3 +11,5 @@ dist/
 dist-electron/
 release/
 .vite/
+bin/
+obj/

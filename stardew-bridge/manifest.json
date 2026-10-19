@@ -1,0 +1,10 @@
+{
+  "Name": "Stardew Helper Bridge",
+  "Author": "doggm",
+  "Version": "1.0.0",
+  "Description": "Выгружает ассортимент странствующей торговки в файл, чтобы его читало приложение Stardew Helper. В игру ничего не меняет.",
+  "UniqueID": "doggm.StardewHelperBridge",
+  "EntryDll": "StardewHelperBridge.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": []
+}

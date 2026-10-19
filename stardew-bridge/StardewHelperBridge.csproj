@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>StardewHelperBridge</AssemblyName>
+    <RootNamespace>StardewHelperBridge</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <!-- Мод сам копируется в Mods после сборки. Выключи, если не нужно. -->
+    <EnableHarmony>false</EnableHarmony>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Находит игру и SMAPI, подтягивает ссылки, раскладывает готовый мод -->
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.3.2" />
+  </ItemGroup>
+
+</Project>
