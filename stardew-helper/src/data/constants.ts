@@ -11,21 +11,22 @@ export const SEASON_KEY = ['spring', 'summer', 'fall', 'winter'];
 export const DOW = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 export const WIKI = 'https://ru.stardewvalleywiki.com/';
 
+/**
+ * Один словарь на бейджи и на фильтры. Раньше их было два, и «позже» в бейдже
+ * расходилось с «позже в этом году» в чипе фильтра — связь приходилось
+ * достраивать самому.
+ */
 export const LVL: Record<string, string> = {
   now: 'можно сейчас',
-  cond: 'при условии',
-  later: 'позже',
+  cond: 'нужно условие',
+  later: 'позже в этом году',
   cart: 'только у торговки',
-  past: 'в Y1 уже никак',
+  past: 'в 1-м году уже никак',
 };
 
 export const LVL_ORDER = ['now', 'cond', 'later', 'last', 'cart', 'past'] as const;
 
 export const LVL_NAME: Record<string, string> = {
-  now: 'можно сейчас',
-  cond: 'при условии',
-  later: 'позже в этом году',
+  ...LVL,
   last: 'последний сезон сбора',
-  cart: 'только у торговки',
-  past: 'в Y1 уже никак',
 };

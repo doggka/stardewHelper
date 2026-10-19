@@ -15,37 +15,64 @@ export function locChips(it: Item): string {
   if (!key) return '';
   const L = LOC[key];
   if (!L) return '';
+  // Кнопки, а не спаны: иначе до них не добраться с клавиатуры,
+  // а скринридер читает их как обычный текст.
   return L.gate
-    ? '<span class="b gate" data-loc="' + key + '">🔒 ' + esc(L.n) + ' · ' + esc(L.gate) + '</span>'
-    : '<span class="b loc" data-loc="' + key + '">📍 ' + esc(L.n) + '</span>';
+    ? '<button type="button" class="b gate" data-loc="' + key + '"'
+      + ' aria-label="Как попасть: ' + esc(L.n) + '">🔒 ' + esc(L.n) + ' · ' + esc(L.gate) + '</button>'
+    : '<button type="button" class="b loc" data-loc="' + key + '"'
+      + ' aria-label="Где это: ' + esc(L.n) + '">📍 ' + esc(L.n) + '</button>';
 }
 
-export function itemHTML(it: Item, showBundle?: boolean): string {
+export interface ItemOpts {
+  /** показать, к какому узелку относится предмет */
+  showBundle?: boolean;
+  /** панель сама про «последний сезон» — не дублируем бейдж на каждой строке */
+  lastIsImplied?: boolean;
+}
+
+export function itemHTML(it: Item, opts: ItemOpts = {}): string {
   const s = st(it), d = done(it), ci = cartInfo(it);
   const q = it.q ? ' <span class="qty">×' + it.q + '</span>' : '';
   const g = it.gold ? ' <span class="b g">золотое</span>' : '';
+  const open = S.openSrc.indexOf(it.id) >= 0;
+
   let bd = '<span class="b ' + s.lvl + '">' + LVL[s.lvl] + '</span>';
-  if (s.last && !d) bd += '<span class="b last">⏳ последний сезон сбора' + (ci.price ? ', дальше только торговка' : '') + '</span>';
+  if (s.last && !d && !opts.lastIsImplied) {
+    bd += '<span class="b last">⏳ последний сезон' + (ci.price ? ' · дальше торговка' : '') + '</span>';
+  }
   bd += locChips(it);
   s.cond.forEach((c) => (bd += '<span class="b g">' + esc(c) + '</span>'));
   if (it.tree && !d) bd += '<span class="b g">дерево растёт 28 дней</span>';
-  return '<div class="item' + (d ? ' ok' : '') + '" data-id="' + it.id + '">'
+
+  return '<div class="item' + (d ? ' ok' : '') + (open ? ' open' : '') + '" data-id="' + it.id + '">'
+    // имя внутри label: кликабельна вся строка, а не квадрат 15px,
+    // и скринридер наконец произносит, что именно он отмечает
+    + '<div class="irow">'
+    + '<label class="ipick">'
     + '<input type="checkbox" ' + (d ? 'checked' : '') + ' data-chk="' + it.id + '">'
-    + '<div style="flex:1;min-width:0">'
-    + '<div class="iname">' + esc(it.n) + q + g
-    + (showBundle ? ' <span class="tag">— ' + esc(it.bundle.name) + '</span>' : '')
-    + ' <span class="dot" data-src="' + it.id + '">?</span></div>'
+    + '<span class="iname">' + esc(it.n) + q + g
+    + (opts.showBundle ? ' <span class="tag">— ' + esc(it.bundle.name) + '</span>' : '')
+    + '</span></label>'
+    // кнопка «?» вне label — иначе клик по ней переключал бы галочку
+    + '<button type="button" class="dot" data-src="' + it.id + '"'
+    + ' aria-expanded="' + open + '" aria-label="Где добывать: ' + esc(it.n) + '">?</button>'
+    + '</div>'
+    + '<div class="ibody">'
     + '<div class="badges">' + bd + '</div>'
-    + '<div class="src">' + esc(it.src || '') + '<br><a href="' + wikiUrl(it.n) + '" target="_blank" rel="noopener">статья на вики ↗</a></div>'
+    + '<div class="src">' + esc(it.src || '')
+    + '<br><a href="' + wikiUrl(it.n) + '" target="_blank" rel="noopener"'
+    + ' aria-label="' + esc(it.n) + ' — статья на вики">статья на вики ↗</a></div>'
     + (it.warn && !d ? '<div class="warn">⚠ ' + it.warn + '</div>' : '')
     + '</div></div>';
 }
 
 export function bundleHTML(b: Bundle): string {
   const p = bprog(b), vis = (b.items || []).filter(visible);
-  let h = '<div class="bundle' + (p.ok ? ' done' : '') + '"><h3>' + (p.ok ? '✔ ' : '') + esc(b.name)
+  let h = '<div class="bundle' + (p.ok ? ' done' : '') + '"><h3>' + (p.ok ? '✓ ' : '') + esc(b.name)
     + '<span class="b g">' + p.c + '/' + p.n + (b.items && b.items.length > b.slots ? ' (из ' + b.items.length + ')' : '') + '</span></h3>'
-    + '<div class="meta">Награда: ' + esc(b.reward) + ' · реально закрыть: ' + SEASON_RU[b.earliest] + ' Y1</div>'
+    + '<div class="meta">Награда: ' + esc(b.reward) + ' · реально закрыть: '
+    + SEASON_RU[b.earliest].toLowerCase() + ', 1-й год</div>'
     + '<div class="bar" style="margin-bottom:6px"><i style="width:' + (p.c / p.n * 100) + '%"></i></div>';
   if (b.note) h += '<p class="note">' + b.note + '</p>';
   h += '<ul class="items">' + vis.map((i) => '<li>' + itemHTML(i) + '</li>').join('') + '</ul>'
@@ -64,8 +91,8 @@ export function vaultHTML(r: Room): string {
     + '</div></div>';
 }
 
-export const flat = (arr: Item[]): string =>
-  '<ul class="flat">' + arr.map((i) => '<li>' + itemHTML(i, true) + '</li>').join('') + '</ul>';
+export const flat = (arr: Item[], opts: ItemOpts = {}): string =>
+  '<ul class="flat">' + arr.map((i) => '<li>' + itemHTML(i, { showBundle: true, ...opts }) + '</li>').join('') + '</ul>';
 
 export const suggHTML = (list: string[]): string =>
   !list.length ? '' : '<div class="sugg">' + list.map((n) => '<button data-sugg="' + esc(n) + '">' + esc(n) + '</button>').join('') + '</div>';
@@ -73,14 +100,22 @@ export const suggHTML = (list: string[]): string =>
 /* ---- панель фильтров ---- */
 export function filterBarHTML(): string {
   if (S.tab === 'plan') return '';
+  // во время поиска счётчики считают весь набор, а не результаты — они бы врали;
+  // и вкладка больше не описывает то, что на экране
+  if (S.q) {
+    return '<div class="fbar searching"><span class="pill">Поиск: ' + esc(S.q)
+      + ' <button type="button" data-act="clearSearch" aria-label="Сбросить поиск">✕</button></span>'
+      + '<span class="sb-meta">вкладки и фильтры отключены, пока идёт поиск</span></div>';
+  }
   const c = countsByLvl();
-  let h = '<div class="legend">';
+  let h = '<div class="legend" role="group" aria-label="Фильтр по статусу">';
   LVL_ORDER.forEach((k) => {
     const sel = S.filters.indexOf(k) >= 0, z = c[k] === 0 && !sel;
-    h += '<span class="b ' + k + (sel ? ' sel' : '') + (z ? ' zero' : '') + '" data-f="' + k + '">'
-      + (sel ? '✓ ' : '') + LVL_NAME[k] + '<span class="cnt">' + c[k] + '</span></span>';
+    h += '<button type="button" class="b ' + k + (sel ? ' sel' : '') + (z ? ' zero' : '') + '"'
+      + ' data-f="' + k + '" aria-pressed="' + sel + '"' + (z ? ' disabled' : '') + '>'
+      + (sel ? '✓ ' : '') + LVL_NAME[k] + '<span class="cnt">' + c[k] + '</span></button>';
   });
-  h += '<span>· 📍 локация и 🔒 условие — кликабельны · «?» — где добывать</span></div>';
+  h += '</div>';
   h += '<div class="fbar"><label><input type="checkbox" id="hd" ' + (S.hideDone ? 'checked' : '') + '>скрыть собранное</label>';
   if (S.locFilter && LOC[S.locFilter]) h += '<span class="pill">📍 только: ' + esc(LOC[S.locFilter].n) + '</span>';
   if (filterActive()) {
@@ -99,7 +134,14 @@ export function openLoc(key: string): void {
   const d = document.createElement('div');
   d.className = 'mask';
   d.id = 'mask';
-  d.innerHTML = '<div class="modal"><h3>' + esc(L.n) + '</h3>'
+  d.setAttribute('role', 'dialog');
+  d.setAttribute('aria-modal', 'true');
+  d.setAttribute('aria-label', L.n);
+  d.innerHTML = '<div class="modal">'
+    // крестик прилипает к верху: контент модалки длиннее окна,
+    // и кнопка «Закрыть» внизу оказывалась за обрезом
+    + '<button type="button" class="mclose" id="closemask" aria-label="Закрыть">✕</button>'
+    + '<h3>' + esc(L.n) + '</h3>'
     + '<div class="mapbox"><img src="img/valley-map.png" alt="Карта долины">'
     + '<div class="pin" style="left:' + (L.pin[0] + 10) + 'px;top:' + (L.pin[1] + 10) + 'px"></div></div>'
     + (L.offmap ? '<p class="note">Маркер показывает, откуда попадать: ' + esc(L.offmap) + '. Сама локация за пределами карты долины.</p>' : '')
@@ -109,10 +151,24 @@ export function openLoc(key: string): void {
     + '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'
     + (ALL.some((i) => hasLoc(i, key)) ? '<button data-locfilter="' + key + '">Показать все предметы отсюда</button>' : '')
     + '<button data-ext="' + esc(wikiUrl(L.wiki)) + '">Статья на вики ↗</button>'
-    + '<button id="closemask">Закрыть</button></div></div>';
+    + '<button data-close="1">Закрыть</button></div></div>';
   document.body.appendChild(d);
+
+  const prev = document.activeElement as HTMLElement | null;
+  d.querySelector<HTMLElement>('#closemask')?.focus();
+
+  const close = (): void => {
+    d.remove();
+    document.removeEventListener('keydown', onKey);
+    prev?.focus();
+  };
+  const onKey = (e: KeyboardEvent): void => {
+    if (e.key === 'Escape') close();
+  };
+  document.addEventListener('keydown', onKey);
+
   d.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
-    if (t === d || t.id === 'closemask') d.remove();
+    if (t === d || t.id === 'closemask' || t.dataset.close) close();
   });
 }

@@ -26,6 +26,9 @@ export interface AppState {
   filters: string[];
   hideDone: boolean;
   locFilter: string | null;
+  /** id предметов с раскрытым «где добывать» — в состоянии, а не классом на узле,
+   *  иначе подсказка схлопывается при любой перерисовке */
+  openSrc: string[];
 
   /** прогресс по каждому сейву отдельно */
   bySave: Record<string, Progress>;
@@ -39,8 +42,43 @@ function defaults(): AppState {
     screen: 'welcome', saveId: 'manual', save: null, modsSeen: false,
     season: 0, day: 1, weather: 'sun', tab: 'todo', q: '',
     y1guarantee: false, filters: [], hideDone: false, locFilter: null,
+    openSrc: [],
     bySave: {},
   };
+}
+
+const SCREENS = ['welcome', 'mods', 'tracker'];
+const TABS = ['todo', 'rooms', 'plan', 'cart', 'avail'];
+
+/**
+ * Приводит состояние в рабочий вид. Нужен и при загрузке, и при импорте файла:
+ * JSON.parse пропускает любой синтаксически верный мусор, а Object.assign
+ * радостно кладёт строку туда, где ожидается номер сезона.
+ */
+export function sanitize(s: AppState): void {
+  if (typeof s.season !== 'number' || s.season < 0 || s.season > 3) s.season = 0;
+  s.season = Math.floor(s.season) as 0 | 1 | 2 | 3;
+  if (typeof s.day !== 'number' || s.day < 1 || s.day > 28) s.day = 1;
+  s.day = Math.floor(s.day);
+  if (s.weather !== 'sun' && s.weather !== 'rain') s.weather = 'sun';
+  if (SCREENS.indexOf(s.screen) < 0) s.screen = 'tracker';
+  if (TABS.indexOf(s.tab) < 0) s.tab = 'todo';
+  if (typeof s.q !== 'string') s.q = '';
+  if (!Array.isArray(s.filters)) s.filters = [];
+  if (!Array.isArray(s.openSrc)) s.openSrc = [];
+  if (typeof s.locFilter !== 'string') s.locFilter = null;
+  s.hideDone = !!s.hideDone;
+  s.y1guarantee = !!s.y1guarantee;
+  s.modsSeen = !!s.modsSeen;
+  if (!s.bySave || typeof s.bySave !== 'object') s.bySave = {};
+  for (const k of Object.keys(s.bySave)) {
+    const p = s.bySave[k];
+    if (!p || typeof p !== 'object' || !p.checked || typeof p.checked !== 'object') {
+      s.bySave[k] = { checked: {} };
+    }
+  }
+  if (typeof s.saveId !== 'string' || !s.saveId) s.saveId = 'manual';
+  if (s.save && typeof s.save !== 'object') s.save = null;
 }
 
 export const S: AppState = defaults();
@@ -76,10 +114,7 @@ export function load(): void {
   } catch {
     /* повреждённое состояние просто игнорируем — лучше чистый старт, чем падение */
   }
-  if (!S.day || S.day < 1 || S.day > 28) S.day = 1;
-  if (!Array.isArray(S.filters)) S.filters = [];
-  if (!S.bySave) S.bySave = {};
-  if (!S.saveId) S.saveId = 'manual';
+  sanitize(S);
 }
 
 export function save(): void {

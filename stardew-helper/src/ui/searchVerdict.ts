@@ -16,7 +16,8 @@ export function searchVerdict(): string {
   if (!hits.length) {
     const exact = knownItem(q);
     if (exact) {
-      return '<div class="panel verdict nope"><h2>⚪ <span class="big">' + esc(exact) + '</span> — для узелков НЕ нужен</h2>'
+      // цвет карточки и так разводит исходы — капс поверх этого лишний
+      return '<div class="panel verdict nope"><h2>⚪ <span class="big">' + esc(exact) + '</span> — для узелков не нужен</h2>'
         + '<p class="note" style="font-style:normal">Такой предмет в игре есть, но ни в один узелок Общественного центра он не входит. Можно спокойно продавать, дарить или готовить.</p>'
         + '<button data-ext="' + esc(wikiUrl(exact)) + '">статья на вики ↗</button></div>';
     }
@@ -50,9 +51,9 @@ export function searchVerdict(): string {
       return '<li>' + esc(b.name) + ' <span class="tag">(' + esc(b.room.name) + ')</span> — '
         + (i.q ? i.q + ' шт' : '1 шт') + ', ' + (i.gold ? '<b>золотое качество</b>' : 'любое качество')
         + ', ' + ((b.items || []).length > b.slots ? 'на выбор ' + b.slots + ' из ' + (b.items || []).length : 'обязательный, ' + b.slots + ' из ' + b.slots)
-        + (done(i) ? ' — <b style="color:#8ddc8d">уже отмечен ✔</b>' : '') + '</li>';
+        + (done(i) ? ' — <b style="color:#8ddc8d">уже отмечен ✓</b>' : '') + '</li>';
     }).join('');
-    h += '<div class="panel verdict yes"><h2>✅ <span class="big">' + esc(nm) + '</span> — НУЖЕН для узелков</h2>'
+    h += '<div class="panel verdict yes"><h2>✅ <span class="big">' + esc(nm) + '</span> — нужен для узелков</h2>'
       + '<ul style="margin:0 0 8px;padding-left:18px;font-size:13px">' + needs + '</ul>'
       + '<div class="badges" style="margin-bottom:8px"><span class="b ' + s.lvl + '">' + LVL[s.lvl] + '</span>'
       + (s.last ? '<span class="b last">⏳ последний сезон сбора</span>' : '')

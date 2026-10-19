@@ -1,12 +1,21 @@
 import './ui/theme.css';
 import { DOW, SEASON_RU } from './data/constants';
-import { S, load, progress, save } from './state';
+import { S, load, progress, sanitize, save } from './state';
 import { cartToday, dow, nextCart, setDone, totals } from './logic/status';
 import { esc, filterBarHTML, openLoc } from './ui/html';
 import { renderTrackerBody } from './screens/tracker';
 import { bridge, isDesktop, openExternal } from './bridge';
 
 const shell = document.getElementById('shell') as HTMLElement;
+
+/** Подпись у первой вкладки — она единственная не говорит, что внутри. */
+const TABS: [string, string, string?][] = [
+  ['todo', '⚠ Не продолбать', '— закрывается в этом сезоне'],
+  ['rooms', 'Комнаты'],
+  ['plan', 'План по сезонам'],
+  ['cart', '🛒 Торговка'],
+  ['avail', 'Доступно сейчас'],
+];
 
 /* ===================== ЭКРАН ТРЕКЕРА ===================== */
 
@@ -20,25 +29,30 @@ function trackerChrome(): string {
   // Раньше это были мелкие кнопки внутри плотного ряда контролов — их не замечали.
   const manualCount = Object.keys(progress().checked).length;
   const savedCount = S.save ? Object.values(S.save.progress).reduce((a, x) => a + x.length, 0) : 0;
+  const marks = savedCount
+    ? 'отмечено ' + manualCount + ', из сейва ' + savedCount
+    : 'отмечено ' + manualCount;
   const saveBar = isDesktop
     ? '<div class="savebar' + (S.save ? '' : ' manual') + '">'
       + (S.save
           ? '<span class="sb-name">🌱 ' + esc(S.save.farmName) + '</span>'
             + '<span class="sb-meta">' + esc(S.save.playerName) + ' · ' + SEASON_RU[S.save.season].toLowerCase()
             + ', день ' + S.save.day + ', год ' + S.save.year + '</span>'
-            + '<span class="sb-meta" title="сколько отметок пришло из сейва при импорте">'
-            + 'отмечено ' + manualCount + ' (из сейва ' + savedCount + ')</span>'
+            + '<span class="sb-meta">' + marks + '</span>'
           : '<span class="sb-name">Режим без сейва</span>'
-            + '<span class="sb-meta">галочки ставишь вручную, отмечено ' + manualCount + '</span>')
+            + '<span class="sb-meta">галочки ставишь вручную, ' + marks + '</span>')
       + '<span class="sb-sp"></span>'
       + (S.save ? '<button data-act="resync">↻ Обновить из сейва</button>' : '')
       + '<button data-act="chooseSave">' + (S.save ? 'Сменить сейв' : 'Выбрать сейв') + '</button>'
-      + '<button data-act="resetAll" class="danger">Начать заново</button>'
+      // прятать нечего, пока ничего не накоплено: на первом запуске
+      // деструктивная кнопка только пугает
+      + (Object.keys(S.bySave).length ? '<button data-act="resetAll" class="danger">Стереть все данные</button>' : '')
       + '</div>'
     : '';
 
-  return '<header>'
-    + '<h1>Узелки Общественного центра <small>— закрыть за 1-й год</small></h1>'
+  // название приложения уже есть в титулбаре — здесь говорим о цели
+  return '<a class="skip" href="#view">К списку</a><header>'
+    + '<h1>Закрыть за первый год <small>— 30 узелков Общественного центра</small></h1>'
     + saveBar
     + '<div class="row">'
     + '<div class="ctl"><label>Сезон</label>'
@@ -54,26 +68,65 @@ function trackerChrome(): string {
     + '<div class="ctl" style="flex:1;min-width:160px"><label>Узелки</label>'
     + '<span style="font-variant-numeric:tabular-nums">' + t.ok + '/' + t.n + '</span>'
     + '<div class="bar"><i style="width:' + (t.ok / t.n * 100) + '%"></i></div></div>'
-    + '<div class="ctl"><input type="search" id="q" placeholder="предмет: нужен или нет?" style="width:180px" value="' + (S.q || '').replace(/"/g, '&quot;') + '"></div>'
+    + '<div class="ctl"><input type="search" id="q" placeholder="название предмета"'
+    + ' aria-label="Поиск предмета" style="width:180px" value="' + (S.q || '').replace(/"/g, '&quot;') + '"></div>'
     + '<div class="ctl"><button data-act="export">Экспорт</button><button data-act="import">Импорт</button>'
     + (isDesktop ? '<button data-act="mods">Моды</button>' : '')
-    + '<button data-act="reset">Сбросить галочки</button></div>'
+    + '<button data-act="reset">Снять галочки этой фермы</button></div>'
     + '</div>'
-    + '<div class="tabs" id="tabs">'
-    + [['todo', '⚠ Не продолбать'], ['rooms', 'Комнаты'], ['plan', 'План по сезонам'], ['cart', '🛒 Торговка'], ['avail', 'Доступно сейчас']]
-      .map(([k, n]) => '<button data-t="' + k + '"' + (S.tab === k ? ' class="on"' : '') + '>' + n + '</button>').join('')
+    + '<p class="searchhint">Введи название — скажу, нужен ли он для узелков</p>'
+    + '<div class="tabs' + (S.q ? ' dimmed' : '') + '" id="tabs" role="tablist" aria-label="Разделы">'
+    + TABS.map(([k, n, sub]) => '<button role="tab" data-t="' + k + '"'
+      + ' aria-selected="' + (S.tab === k) + '"' + (S.tab === k ? ' class="on"' : '') + '>'
+      + n + (sub ? ' <small>' + sub + '</small>' : '') + '</button>').join('')
     + '</div></header>'
-    + '<main><div id="filters">' + filterBarHTML() + '</div><div id="view">' + renderTrackerBody() + '</div></main>'
-    + '<div class="foot">Данные с ru.stardewvalleywiki.com · стандартный (не смешанный) набор узелков · прогресс хранится локально</div>';
+    + '<main><div id="filters">' + filterBarHTML() + '</div>'
+    + '<div id="view" tabindex="-1">' + renderTrackerBody() + '</div></main>'
+    + '<div class="foot">Данные с ru.stardewvalleywiki.com · обычный набор узелков '
+    + '(не «перемешанные узелки» из настроек фермы) · прогресс хранится локально</div>';
 }
 
 /* ===================== РОУТЕР ===================== */
 
+/**
+ * Запоминаем, на чём стоял фокус, чтобы вернуть его после перерисовки.
+ * render() пересобирает DOM целиком — без этого после каждой галочки
+ * фокус улетает на body, и клавиатурой список не пройти.
+ */
+function focusKey(): { key: string | null; caret: number | null } {
+  const a = document.activeElement as HTMLElement | null;
+  if (!a) return { key: null, caret: null };
+  const key = a.dataset?.chk ? 'chk:' + a.dataset.chk
+    : a.dataset?.src ? 'src:' + a.dataset.src
+    : a.dataset?.t ? 'tab:' + a.dataset.t
+    : a.dataset?.f ? 'flt:' + a.dataset.f
+    : a.id ? 'id:' + a.id
+    : null;
+  const caret = a instanceof HTMLInputElement && a.type === 'search' ? a.selectionStart : null;
+  return { key, caret };
+}
+
+function restoreFocus(key: string | null, caret: number | null): void {
+  if (!key) return;
+  const sep = key.indexOf(':');
+  const kind = key.slice(0, sep), val = key.slice(sep + 1);
+  const attr: Record<string, string> = { chk: 'data-chk', src: 'data-src', tab: 'data-t', flt: 'data-f' };
+  const el = kind === 'id'
+    ? document.getElementById(val)
+    : shell.querySelector<HTMLElement>('[' + attr[kind] + '="' + CSS.escape(val) + '"]');
+  if (!el) return;
+  el.focus();
+  // каретка в поиске: без этого следующий символ уезжает в начало строки
+  if (caret !== null && el instanceof HTMLInputElement) el.setSelectionRange(caret, caret);
+}
+
 export function render(): void {
   const sy = shell.scrollTop;
+  const { key, caret } = focusKey();
   if (S.screen === 'tracker') {
     shell.innerHTML = '<div class="screen">' + trackerChrome() + '</div>';
     shell.scrollTop = sy;
+    restoreFocus(key, caret);
   } else {
     // экраны онбординга подключаются динамически, чтобы не тянуть их в трекер
     void renderOnboarding();
@@ -132,7 +185,12 @@ document.addEventListener('click', (e) => {
   }
   if (d.sugg) { S.q = d.sugg; save(); render(); return; }
   if (d.loc) { openLoc(d.loc); return; }
-  if (d.src !== undefined) { el.closest('.item')?.classList.toggle('open'); return; }
+  if (d.src !== undefined) {
+    const i = S.openSrc.indexOf(d.src);
+    if (i >= 0) S.openSrc.splice(i, 1);
+    else S.openSrc.push(d.src);
+    save(); render(); return;
+  }
   if (d.w) { S.weather = d.w as 'sun' | 'rain'; save(); render(); return; }
   if (d.t) { S.tab = d.t; save(); render(); shell.scrollTop = 0; return; }
   if (d.act) { void action(d.act, el); return; }
@@ -146,8 +204,7 @@ document.addEventListener('input', (e) => {
   qt = window.setTimeout(() => {
     S.q = el.value;
     save();
-    render();
-    (document.getElementById('q') as HTMLInputElement | null)?.focus();
+    render(); // фокус и каретку возвращает restoreFocus внутри render
   }, 220);
 });
 
@@ -170,7 +227,14 @@ async function action(name: string, el: HTMLElement): Promise<void> {
       const r = new FileReader();
       r.onload = () => {
         try {
-          Object.assign(S, JSON.parse(String(r.result)));
+          const parsed = JSON.parse(String(r.result));
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new Error('не объект');
+          }
+          Object.assign(S, parsed);
+          // JSON.parse пропускает любой валидный мусор: без этого
+          // {"bySave": null} снесло бы прогресс по всем фермам
+          sanitize(S);
           save();
           render();
         } catch {
@@ -191,7 +255,7 @@ async function action(name: string, el: HTMLElement): Promise<void> {
     return;
   }
   if (name === 'resetAll') {
-    if (!confirm('Стереть вообще всё: выбранный сейв, галочки по всем фермам, фильтры?\n\nСохранения игры это не затронет — приложение в них не пишет.')) return;
+    if (!confirm('Стереть вообще всё: выбранный сейв, галочки по всем фермам, фильтры?\n\nСохранения игры это не затронет — в них я не пишу.')) return;
     S.bySave = {};
     S.saveId = 'manual';
     S.save = null;
@@ -204,6 +268,12 @@ async function action(name: string, el: HTMLElement): Promise<void> {
     S.screen = 'welcome';
     save();
     render();
+    return;
+  }
+  if (name === 'clearSearch') {
+    S.q = '';
+    save(); render();
+    (document.getElementById('q') as HTMLInputElement | null)?.focus();
     return;
   }
   if (name === 'chooseSave') { S.screen = 'welcome'; save(); render(); return; }

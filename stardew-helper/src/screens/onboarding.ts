@@ -62,11 +62,15 @@ async function welcomeHTML(): Promise<string> {
           + ' — в этой версии игры состав был другим</span>';
       }
     }
-    return '<div class="savecard' + (bad ? ' bad' : '') + '" data-act="pickSave" data-id="' + esc(s.id) + '">'
-      + '<div><div class="nm">' + esc(s.farmName) + '</div>'
-      + '<div class="who">' + esc(s.playerName) + note + '</div></div>'
-      + '<div class="when"><b>' + SEASON_RU[s.season].toLowerCase() + ', день ' + s.day + '</b>год ' + s.year + '</div>'
-      + '</div>';
+    // кнопка, а не div: это основное действие экрана, оно должно
+    // нажиматься с клавиатуры и объявляться скринридером
+    return '<button type="button" class="savecard' + (bad ? ' bad' : '') + '"'
+      + ' data-act="pickSave" data-id="' + esc(s.id) + '">'
+      + '<span class="sc-main"><span class="nm">' + esc(s.farmName) + '</span>'
+      + '<span class="who">' + esc(s.playerName) + note + '</span></span>'
+      + '<span class="when"><b>' + SEASON_RU[s.season].toLowerCase() + ', день ' + s.day + '</b>'
+      + 'год ' + s.year + '</span>'
+      + '</button>';
   }).join('');
 
   const empty = '<p class="hint">Сейвов не нашлось. Обычно они лежат в '
@@ -80,11 +84,12 @@ async function welcomeHTML(): Promise<string> {
           + '<div class="savelist">' + cards + '</div>'
         : empty)
     + '<div class="actions">'
+    + '<button data-act="manual"' + (saves.length ? '' : ' class="on"') + '>Без сейва, вручную</button>'
     + '<button data-act="addRoot">Указать другую папку</button>'
-    + '<button data-act="manual">Без сейва, вручную</button>'
-    + '<button data-act="resetAll" class="danger">Начать заново</button>'
+    // на первом запуске стирать нечего — деструктивная кнопка только пугает
+    + (Object.keys(S.bySave).length ? '<button data-act="resetAll" class="danger">Стереть все данные</button>' : '')
     + '</div>'
-    + '<p class="hint">Приложение только читает сохранения. В файлы игры оно не пишет ничего.</p>'
+    + '<p class="hint">Я только читаю сохранения — в файлы игры не пишу ничего.</p>'
     + '</div>';
 }
 
@@ -100,7 +105,9 @@ async function modsHTML(): Promise<string> {
   const cards = mods.map((m) => {
     const t = MOD_TEXT[m.key];
     if (!t) return '';
-    return '<div class="modcard"><div class="mi">'
+    // data-key, а не позиция: карточки без описания пропускаются,
+    // и сопоставление по индексу разъедется при первом же новом моде
+    return '<div class="modcard" data-key="' + esc(m.key) + '"><div class="mi">'
       + '<div class="mn">' + esc(m.name)
       + (m.installed
           ? '<span class="ok-chip">✓ стоит' + (m.version ? ' ' + esc(m.version) : '') + '</span>'
@@ -108,7 +115,8 @@ async function modsHTML(): Promise<string> {
       + '</div>'
       + '<div class="md">' + esc(t.what) + '</div>'
       + '<div class="mw">' + esc(t.why) + '</div>'
-      + '</div><button data-ext="' + esc(t.url) + '">Открыть ↗</button></div>';
+      + '</div><button data-ext="' + esc(t.url) + '"'
+      + ' aria-label="Открыть страницу мода ' + esc(m.name) + '">Открыть ↗</button></div>';
   }).join('');
 
   return '<div class="hero" style="max-width:820px">'
@@ -131,8 +139,8 @@ async function modsHTML(): Promise<string> {
     + '<code class="droppath">' + esc(dropPath || '—') + '</code>'
     + '<button data-act="openDrop">Открыть папку</button></div>'
     + '<div class="actions" style="justify-content:flex-start;margin-top:10px">'
-    + '<button data-act="bootstrapDry">Проверить</button>'
-    + '<button data-act="bootstrapRun" class="on">Установить</button>'
+    + '<button data-act="bootstrapDry">Проверить без изменений</button>'
+    + '<button data-act="bootstrapRun" class="on">Установить (откроется PowerShell)</button>'
     + '</div>'
     + '<p class="note" style="margin-top:8px">'
     + '<b>Проверить</b> — ничего не скачивает и не меняет: находит игру и показывает, '
@@ -300,8 +308,8 @@ function setButtons(busy: boolean): void {
 
 /** Обновляем отметки «стоит / нет» без перерисовки всего экрана. */
 function refreshModChips(): void {
-  document.querySelectorAll<HTMLElement>('.modcard').forEach((card, i) => {
-    const m = mods[i];
+  document.querySelectorAll<HTMLElement>('.modcard').forEach((card) => {
+    const m = mods.find((x) => x.key === card.dataset.key);
     if (!m) return;
     const chip = card.querySelector('.ok-chip, .no-chip');
     if (!chip) return;
