@@ -3,6 +3,7 @@ import { DOW, SEASON_KEY, SEASON_RU } from '../data/constants';
 import { ALL, S } from '../state';
 import { bprog, cartToday, dow, done, nextCart, st } from '../logic/status';
 import { norm } from '../logic/search';
+import { covered } from '../logic/have';
 import { esc, flat } from '../ui/html';
 
 /**
@@ -22,6 +23,8 @@ export function urgentCrops(): { it: Item; last: number; left: number }[] {
   const out: { it: Item; last: number; left: number }[] = [];
   ALL.forEach((it) => {
     if (it.bundle.room.extra || done(it) || bprog(it.bundle).ok) return;
+    // уже растёт на грядке или лежит в сундуке — сажать нечего
+    if (covered(it)) return;
     const last = lastPlantDay(it);
     if (last === null) return;
     const left = last - S.day;
@@ -132,15 +135,40 @@ function expandable(key: string, cls: string, ico: string, head: string, sub: st
 export function todayHTML(): string {
   const today = cartToday(), nx = nextCart();
   const rows: string[] = [];
+  const avail = availableToday();
 
-  // 1. Что закрывается в этом сезоне
-  const closing = ALL.filter((it) => !it.bundle.room.extra && !done(it)
+  // 0. Рыбалка — единственный пункт про «идти или не идти», остальные про
+  //    «не забудь». Поэтому первой и отдельно.
+  const fish = avail.filter(isFish);
+  let head = '';
+  if (fish.length) {
+    const lastOnes = fish.filter((i) => st(i).last);
+    head = '<div class="tfish">' + expandable('fish', lastOnes.length ? 'urgent' : '', '🎣',
+      'Рыбалка сегодня: ' + fish.length
+      + (lastOnes.length ? ', из них ' + lastOnes.length + ' в последний сезон' : ''),
+      lastOnes.length
+        ? 'идти стоит: ' + lastOnes.slice(0, 3).map((i) => esc(i.n)).join(', ')
+          + ' иначе в этом году уже не достать'
+        : 'ничего не горит — можно и не ходить, всё ловится и дальше',
+      fish) + '</div>';
+  }
+
+  // 1. Что закрывается в этом сезоне. Предметы, которые уже лежат дома
+  //    или дорастают, из счётчика уходят: за ними идти не надо.
+  const closingAll = ALL.filter((it) => !it.bundle.room.extra && !done(it)
     && !bprog(it.bundle).ok && st(it).last);
-  if (closing.length) {
-    rows.push(expandable('last', 'urgent', '⏳',
-      'Закрывается этим сезоном: ' + closing.length,
-      'дальше только торговка или следующий год',
-      closing, { lastIsImplied: true }));
+  const closing = closingAll.filter((it) => !covered(it));
+  const already = closingAll.length - closing.length;
+  if (closingAll.length) {
+    rows.push(expandable('last', closing.length ? 'urgent' : '', '⏳',
+      closing.length
+        ? 'Закрывается этим сезоном: ' + closing.length
+          + (already ? ' (ещё ' + already + ' уже есть)' : '')
+        : 'Закрывается этим сезоном: всё ' + already + ' уже есть у тебя',
+      closing.length
+        ? 'дальше только торговка или следующий год'
+        : 'осталось донести до центра',
+      closingAll, { lastIsImplied: true }));
   }
 
   // 2. Культуры, которым вот-вот станет поздно
@@ -155,29 +183,19 @@ export function todayHTML(): string {
       crops.map((x) => x.it)));
   }
 
-  const avail = availableToday();
-
-  // 3. Рыбалка — отдельно, потому что это решение «идти или не идти»,
-  //    а не просто список. Ответ даём в заголовке.
-  const fish = avail.filter(isFish);
-  if (fish.length) {
-    const lastOnes = fish.filter((i) => st(i).last);
-    rows.push(expandable('fish', lastOnes.length ? 'urgent' : '', '🎣',
-      'Рыбалка сегодня: ' + fish.length
-      + (lastOnes.length ? ', из них ' + lastOnes.length + ' в последний сезон' : ''),
-      lastOnes.length
-        ? 'идти стоит: ' + lastOnes.slice(0, 3).map((i) => esc(i.n)).join(', ')
-          + ' иначе в этом году уже не достать'
-        : 'ничего не горит — можно и не ходить, всё ловится и дальше',
-      fish));
-  }
-
-  // 4. Всё остальное, что доступно именно сейчас
-  const other = avail.filter((i) => !isFish(i));
+  // 3. Всё остальное, что доступно именно сейчас.
+  //    Без рыбы (она выше), без того, что уже есть, и без вещей вне
+  //    сезонов: древесина и камень доступны каждый день весь год —
+  //    новостью они быть не могут.
+  const other = avail.filter((i) => !isFish(i) && i.s && !covered(i));
   if (other.length) {
+    // одинаковые названия из разных узелков схлопываем: «Древесина,
+    // Древесина, Камень» — это не три дела, а два
+    const names: string[] = [];
+    other.forEach((i) => { if (names.indexOf(i.n) < 0) names.push(i.n); });
     rows.push(expandable('now', '', '🧺',
-      'Можно взять сейчас: ' + other.slice(0, 3).map((i) => esc(i.n)).join(', ')
-      + (other.length > 3 ? ' и ещё ' + (other.length - 3) : ''),
+      'Можно взять сейчас: ' + names.slice(0, 3).map(esc).join(', ')
+      + (names.length > 3 ? ' и ещё ' + (names.length - 3) : ''),
       'сезон и погода подходят' + (S.weather === 'rain' ? ' · дождь' : ''),
       other));
   }
@@ -185,7 +203,8 @@ export function todayHTML(): string {
   // 5. Торговка. Если мод-мостик отдал список — разбираем его по нашим данным
   rows.push(cartRow(today, nx));
 
-  return '<div class="today">'
+  return head
+    + '<div class="today">'
     + '<div class="thead">' + DOW[dow(S.day)] + ', ' + S.day + ' ' + SEASON_RU[S.season].toLowerCase()
     + ', ' + (S.weather === 'rain' ? 'дождь' : 'ясно') + '</div>'
     + rows.join('') + '</div>';

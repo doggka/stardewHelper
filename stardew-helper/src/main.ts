@@ -5,6 +5,7 @@ import { cartToday, dow, nextCart, setDone, totals } from './logic/status';
 import { esc, filterBarHTML, openLoc } from './ui/html';
 import { clearRecent, markRecent, renderTrackerBody } from './screens/tracker';
 import { setBridgeState } from './screens/today';
+import { setBelongings } from './logic/have';
 import { bridge, isDesktop, openExternal } from './bridge';
 
 const shell = document.getElementById('shell') as HTMLElement;
@@ -438,6 +439,21 @@ async function launch(): Promise<void> {
 }
 
 /**
+ * Что лежит в сундуках и растёт на грядках. Молча проглатываем ошибку:
+ * без этих данных приложение работает как раньше, просто без подсказок
+ * «у тебя это уже есть».
+ */
+async function refreshBelongings(id: string): Promise<void> {
+  if (!bridge) return;
+  try {
+    setBelongings(await bridge.saves.belongings(id));
+    render();
+  } catch {
+    setBelongings(null);
+  }
+}
+
+/**
  * Вернулся из игры — перечитываем сейв. Иначе прогресс на экране старый,
  * и надо вспоминать про кнопку «Обновить из сейва».
  */
@@ -450,6 +466,8 @@ function watchFocus(): void {
       setBridgeState(st);
       if (st) render();
     });
+    // сундуки и грядки берутся из сейва, а он переписывается при каждом сне
+    if (S.save) void refreshBelongings(S.save.id);
     // SMAPI могли поставить, пока приложение открыто — иначе пункт меню
     // так и останется серым до перезапуска
     void b.game.detect().then((g) => {
@@ -505,4 +523,5 @@ if (bridge) {
     setBridgeState(st);
     render();
   });
+  if (S.save) void refreshBelongings(S.save.id);
 }

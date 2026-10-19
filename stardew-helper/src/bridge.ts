@@ -1,4 +1,4 @@
-import type { BridgeState, GameInfo, ModInfo, SaveSummary } from './types';
+import type { Belongings, BridgeState, GameInfo, ModInfo, SaveSummary } from './types';
 
 /** Мост в процесс Electron. В обычном браузере его нет — тогда работаем вручную. */
 export interface Bridge {
@@ -16,6 +16,7 @@ export interface Bridge {
     removeRoot(p: string): Promise<string[]>;
     list(): Promise<SaveSummary[]>;
     read(id: string): Promise<SaveSummary | null>;
+    belongings(id: string): Promise<Belongings | null>;
   };
   game: {
     detect(): Promise<GameInfo>;
@@ -69,6 +70,13 @@ if (import.meta.env.DEV && location.search.includes('mock') && !window.sdv) {
         mkSave('452028593', 'Пивзавод', 'Андрей', 0, 6, 1, '1.6.15', 0, []),
       ],
       read: async () => null,
+      belongings: async () => ({
+        items: [
+          { id: '24', qty: 3, quality: 0, where: 'chest', loc: 'Farm', x: 59, y: 17 },
+          { id: '190', qty: 1, quality: 0, where: 'bag' },
+        ],
+        crops: [{ id: '262', loc: 'Farm', x: 64, y: 20, days: 4 }],
+      }),
     },
     game: {
       detect: async () => ({ path: 'F:\\SteamLibrary\\steamapps\\common\\Stardew Valley', smapiInstalled: false, modsPath: null }),

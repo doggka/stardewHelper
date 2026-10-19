@@ -22,6 +22,7 @@ const api = {
     removeRoot: (p: string): Promise<string[]> => ipcRenderer.invoke('saves:removeRoot', p),
     list: (): Promise<unknown[]> => ipcRenderer.invoke('saves:list'),
     read: (id: string): Promise<unknown> => ipcRenderer.invoke('saves:read', id),
+    belongings: (id: string): Promise<unknown> => ipcRenderer.invoke('saves:belongings', id),
   },
 
   game: {

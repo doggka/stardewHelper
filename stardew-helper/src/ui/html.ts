@@ -4,6 +4,7 @@ import { LOC } from '../data/locations';
 import { ALL, S, progress } from '../state';
 import { bprog, cartInfo, done, effLoc, hasLoc, st } from '../logic/status';
 import { countsByLvl, filterActive, visible } from '../logic/filters';
+import { enough, have, haveText } from '../logic/have';
 
 export const esc = (s: unknown): string =>
   String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
@@ -48,13 +49,28 @@ function pickHint(s: Status): string {
   return '';
 }
 
+/** «Это у тебя уже есть» — отдельный бейдж, он важнее любого статуса. */
+function haveHTML(it: Item): { badge: string; cls: string } {
+  const h = have(it);
+  if (!h) return { badge: '', cls: '' };
+  const ready = enough(it, h);
+  return {
+    badge: '<span class="b ' + (ready ? 'got' : 'grow') + '">'
+      + (ready ? '✓ ' : '🌱 ') + esc(haveText(it, h)) + '</span>',
+    // за таким предметом идти не надо: подсветка «добудь сегодня» только мешает
+    cls: ready ? 'hint-got' : 'hint-grow',
+  };
+}
+
 export function itemHTML(it: Item, opts: ItemOpts = {}): string {
   const s = st(it), d = done(it), ci = cartInfo(it);
   const q = it.q ? ' <span class="qty">×' + it.q + '</span>' : '';
   const g = it.gold ? ' <span class="b g">золотое</span>' : '';
   const open = S.openSrc.indexOf(it.id) >= 0;
 
-  let bd = '<span class="b ' + s.lvl + '">' + LVL[s.lvl] + '</span>';
+  const hv = d ? { badge: '', cls: '' } : haveHTML(it);
+
+  let bd = hv.badge + '<span class="b ' + s.lvl + '">' + LVL[s.lvl] + '</span>';
   if (s.last && !d && !opts.lastIsImplied) {
     bd += '<span class="b last">⏳ последний сезон' + (ci.price ? ' · дальше торговка' : '') + '</span>';
   }
@@ -63,7 +79,7 @@ export function itemHTML(it: Item, opts: ItemOpts = {}): string {
   if (it.tree && !d) bd += '<span class="b g">дерево растёт 28 дней</span>';
 
   return '<div class="item' + (d ? ' ok' : '') + (open ? ' open' : '')
-    + (d ? '' : ' ' + pickHint(s)) + '" data-id="' + it.id + '">'
+    + (d ? '' : ' ' + (hv.cls || pickHint(s))) + '" data-id="' + it.id + '">'
     // имя внутри label: кликабельна вся строка, а не квадрат 15px,
     // и скринридер наконец произносит, что именно он отмечает
     + '<div class="irow">'

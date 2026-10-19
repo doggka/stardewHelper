@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { DEFAULT_ROOT, listSaves, readSaveById } from './saves';
+import { readBelongings } from './belongings';
 import { detectGame, listMods, readBridge } from './game';
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
@@ -106,6 +107,11 @@ function registerIpc() {
   });
   ipcMain.handle('saves:list', () => listSaves(getRoots()));
   ipcMain.handle('saves:read', (_e, id: string) => readSaveById(getRoots(), id));
+  // что уже лежит в сундуках и растёт на грядках — из того же сейва
+  ipcMain.handle('saves:belongings', (_e, id: string) => {
+    const s = readSaveById(getRoots(), id);
+    return s ? readBelongings(s.file) : null;
+  });
 
   ipcMain.handle('game:detect', () => detectGame());
   ipcMain.handle('game:mods', () => listMods(detectGame()));

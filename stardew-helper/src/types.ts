@@ -98,6 +98,31 @@ export interface Status {
   hard: boolean;
 }
 
+/** Что уже есть у игрока. Читается из сейва, сверяется строго по itemId. */
+export interface HeldItem {
+  id: string;
+  qty: number;
+  quality: number;
+  where: 'bag' | 'chest';
+  loc?: string;
+  x?: number;
+  y?: number;
+}
+
+export interface GrowingCrop {
+  id: string;
+  loc: string;
+  x: number;
+  y: number;
+  /** 0 — можно собирать уже сегодня */
+  days: number;
+}
+
+export interface Belongings {
+  items: HeldItem[];
+  crops: GrowingCrop[];
+}
+
 export interface CartInfo {
   price?: string;
   no?: string;

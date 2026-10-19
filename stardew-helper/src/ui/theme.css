@@ -196,6 +196,11 @@ button.b{font:inherit;font-size:12px;line-height:inherit;cursor:pointer}
 .b.loc:hover,.b.gate:hover{color:var(--ink);border-color:var(--faint)}
 
 /* ---------- блок «Сегодня» ---------- */
+/* Рыбалка стоит отдельной карточкой над блоком: это единственный пункт
+   про «идти или не идти», остальные — про «не забудь». */
+.tfish{background:var(--card);border-radius:12px;padding:2px 18px;margin:0 0 12px;
+  border-left:3px solid var(--later)}
+.tfish .trow{border-bottom:0}
 .today{background:var(--card);border-radius:12px;padding:6px 18px 10px;margin:0 0 26px}
 .thead{font-size:12.5px;color:var(--faint);padding:10px 0 8px;border-bottom:1px solid var(--line);
   text-transform:lowercase;letter-spacing:.2px}
@@ -266,6 +271,11 @@ ul.items li:last-child{border-bottom:0}
    не повториться, поэтому заметнее: не только полоса, но и фон */
 .item.hint-window{border-left-color:var(--cond);background:#2c2820}
 .item.hint-last{box-shadow:inset 0 0 0 1px rgba(240,145,74,.30)}
+/* за этим идти не надо — оно уже лежит дома или дорастает */
+.item.hint-got{border-left-color:var(--faint);opacity:.72}
+.item.hint-grow{border-left-color:var(--later);opacity:.85}
+.b.got{background:#23331f;border-color:#3f5c38;color:#a9d79e}
+.b.grow{background:#1f2a36;border-color:#355070;color:#9cc0e8}
 .item.ok{opacity:.45}
 .irow{display:flex;gap:10px;align-items:flex-start}
 /* вся строка с именем — цель клика; раньше попадать надо было в квадрат 15px */
