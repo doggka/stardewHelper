@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Макет: Тихий помощник</title>
+<style>
+/* ===== НАПРАВЛЕНИЕ «ТИХИЙ ПОМОЩНИК» =====
+   Воздух, типографическая шкала, минимум рамок. Цвет работает только там,
+   где несёт смысл — на статусах. Всё остальное — оттенки серого. */
+:root{
+  --bg:#17161a; --bg2:#1e1d22; --card:#24232a; --line:#34323c;
+  --ink:#e9e7ef; --dim:#9a97a6; --faint:#6e6b79; --acc:#e8c05a;
+  --now:#6fcf6f; --cond:#e0b84a; --later:#6aa8e8; --last:#f0914a;
+  --past:#e86a6a; --cart:#b98ae0;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);overflow:hidden;
+  font:15px/1.6 "Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+
+.titlebar{height:36px;background:var(--bg);display:flex;align-items:center;
+  border-bottom:1px solid var(--line)}
+.ttl{padding:0 16px;font-size:12.5px;color:var(--faint);font-weight:500}
+.ttl .sub{display:none}
+.spacer{flex:1}
+.wbtn{width:44px;height:36px;border:0;background:transparent;color:var(--faint);
+  font-size:13px;cursor:pointer}
+.wbtn:hover{background:var(--card);color:var(--ink)}
+.wbtn.close:hover{background:#c0392b;color:#fff}
+
+.shell{height:calc(100% - 36px);overflow:auto}
+
+header{padding:26px 32px 0;max-width:1100px;margin:0 auto}
+h1{margin:0 0 4px;font-size:27px;font-weight:650;letter-spacing:-.4px}
+h1 small{display:block;font-size:14px;color:var(--dim);font-weight:400;
+  letter-spacing:0;margin-top:3px}
+
+.savebar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+  margin:20px 0 0;padding:0 0 18px;border-bottom:1px solid var(--line)}
+.sb-name{font-size:15px;font-weight:600}
+.sb-meta{font-size:13px;color:var(--dim)}
+.sb-sp{flex:1}
+
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px}
+.ctl{display:flex;gap:7px;align-items:center;font-size:13px}
+.ctl.grow{flex:1;min-width:150px;max-width:260px}
+.ctl label{color:var(--faint);font-size:12.5px}
+.num{font-variant-numeric:tabular-nums;font-weight:600}
+select,input{background:var(--card);color:var(--ink);border:1px solid var(--line);
+  border-radius:7px;padding:6px 9px;font:inherit;font-size:13px}
+input[type=search]{width:220px}
+button{background:transparent;color:var(--ink);border:1px solid var(--line);
+  border-radius:7px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;
+  transition:background .12s,border-color .12s}
+button:hover{background:var(--card);border-color:var(--faint)}
+button.on{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+.seg{display:flex;gap:4px}
+.cartday{font-size:13px;color:var(--cart)}
+.bar{height:4px;background:var(--line);border-radius:3px;overflow:hidden;flex:1}
+.bar i{display:block;height:100%;background:var(--now)}
+
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:22px 0 0}
+.tabs button{border:0;border-radius:0;padding:9px 2px;margin-right:18px;
+  color:var(--dim);border-bottom:2px solid transparent}
+.tabs button:hover{background:none;color:var(--ink)}
+.tabs button.on{background:none;color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
+.tabs button small{display:none}
+
+main{padding:26px 32px 40px;max-width:1100px;margin:0 auto}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 22px}
+.b{font-size:12px;padding:3px 10px;border-radius:999px;white-space:nowrap;
+  display:inline-block;border:1px solid transparent}
+button.b{font:inherit;font-size:12px;cursor:pointer;background:var(--card);
+  color:var(--dim);border-color:var(--line)}
+button.b:hover{color:var(--ink)}
+button.b.sel{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:600}
+.b.zero{opacity:.35}
+.cnt{margin-left:6px;opacity:.7}
+/* цвет — только на статусе предмета */
+.b.now{background:rgba(111,207,111,.14);color:var(--now)}
+.b.cond{background:rgba(224,184,74,.14);color:var(--cond)}
+.b.later{background:rgba(106,168,232,.14);color:var(--later)}
+.b.last{background:rgba(240,145,74,.14);color:var(--last)}
+.b.past{background:rgba(232,106,106,.14);color:var(--past)}
+.b.cart{background:rgba(185,138,224,.14);color:var(--cart)}
+.b.g{background:none;color:var(--faint);border-color:var(--line)}
+.b.loc,.b.gate{background:none;color:var(--dim);border-color:var(--line);cursor:pointer}
+.b.loc:hover,.b.gate:hover{color:var(--ink);border-color:var(--faint)}
+
+.panel{margin-bottom:34px}
+.panel h2{margin:0 0 4px;font-size:17px;font-weight:650}
+.panel h2 em{font-style:normal;font-size:13px;color:var(--dim);font-weight:400;
+  display:block;margin-top:2px}
+.room span{font-size:13px;color:var(--dim);font-weight:400;display:block;margin-top:2px}
+
+.flat{list-style:none;margin:16px 0 0;padding:0}
+.flat li{border-bottom:1px solid var(--line)}
+.item{padding:13px 0}
+.item.ok{opacity:.45}
+.irow{display:flex;gap:10px;align-items:flex-start}
+.ipick{display:flex;gap:11px;align-items:flex-start;min-height:24px;flex:1;cursor:pointer}
+.ipick input{width:17px;height:17px;margin:2px 0 0;accent-color:var(--now)}
+.iname{font-size:15px}
+.item.ok .iname{text-decoration:line-through}
+.tag{color:var(--faint);font-size:13px}
+.dot{padding:0 8px;height:24px;font-size:12px;color:var(--faint);border-radius:6px}
+.ibody{padding-left:28px}
+.badges{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
+.warn{color:var(--last);font-size:13px;margin-top:9px;padding-left:12px;
+  border-left:2px solid var(--last)}
+
+.grid{display:grid;gap:26px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  align-items:start;margin-top:18px}
+.bundle{background:var(--card);border-radius:12px;padding:18px 20px}
+.bundle h3{margin:0 0 4px;font-size:15.5px;font-weight:650;display:flex;gap:9px;
+  align-items:center;flex-wrap:wrap}
+.meta{font-size:13px;color:var(--dim);margin-bottom:12px}
+.bundle .bar{margin-bottom:4px}
+.items{list-style:none;margin:10px 0 0;padding:0}
+.items li{border-bottom:1px solid var(--line)}
+.items li:last-child{border-bottom:0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="_content.js"></script>
+<script src="_render.js"></script>
+<script>document.getElementById('app').innerHTML = build({ h1: 'Закрыть за первый год' });</script>
+</body>
+</html>

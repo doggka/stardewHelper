@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Макет: Дневник</title>
+<style>
+/* ===== НАПРАВЛЕНИЕ «ДНЕВНИК» =====
+   Современная сетка и типографика, но тёплая палитра и игровая фактура
+   в шапке и акцентах. Компромисс между «Долиной» и «Тихим помощником». */
+:root{
+  --bg:#1c1915; --bg2:#242018; --card:#2b2620; --card2:#342e26;
+  --line:#413a2e; --line2:#574c3a;
+  --ink:#f0e7d6; --dim:#a8997f; --faint:#7d7059; --gold:#e3b961;
+  --now:#67b86b; --cond:#d9ad44; --later:#5d94d0; --last:#e08240;
+  --past:#d2584f; --cart:#a874d4;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);overflow:hidden;
+  font:15px/1.55 "Segoe UI",system-ui,sans-serif}
+
+.titlebar{height:36px;display:flex;align-items:center;
+  background:linear-gradient(180deg,#3a3225,#282219);
+  border-bottom:1px solid #4d4232;box-shadow:inset 0 1px 0 #564a37}
+.ttl{padding:0 14px;font-size:12.5px;color:var(--gold);font-weight:600;letter-spacing:.3px}
+.ttl .sub{color:var(--faint);font-weight:400}
+.spacer{flex:1}
+.wbtn{width:44px;height:36px;border:0;background:transparent;color:var(--faint);
+  font-size:13px;cursor:pointer}
+.wbtn:hover{background:#45392a;color:var(--ink)}
+.wbtn.close:hover{background:#9e3b33;color:#fff}
+
+.shell{height:calc(100% - 36px);overflow:auto}
+
+/* шапка: тёплая подложка с тонкой золотой линией снизу */
+header{background:linear-gradient(180deg,#2c2519,#231e16);
+  border-bottom:1px solid var(--line2);padding:18px 26px 0;
+  box-shadow:0 1px 0 rgba(227,185,97,.18)}
+.hwrap{max-width:1140px;margin:0 auto}
+h1{margin:0;font-size:22px;font-weight:650;color:var(--gold);letter-spacing:-.2px}
+h1 small{font-size:13px;color:var(--dim);font-weight:400;letter-spacing:0}
+
+.savebar{display:flex;gap:11px;align-items:center;flex-wrap:wrap;
+  background:var(--card);border:1px solid var(--line);border-left:3px solid var(--now);
+  border-radius:9px;padding:8px 12px;margin:14px 0 0}
+.sb-name{font-size:14.5px;font-weight:650}
+.sb-meta{font-size:12.5px;color:var(--dim)}
+.sb-sp{flex:1}
+
+.row{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:12px}
+.ctl{display:flex;gap:6px;align-items:center;background:var(--card);
+  border:1px solid var(--line);border-radius:8px;padding:4px 9px;font-size:13px}
+.ctl.grow{flex:1;min-width:160px;max-width:300px}
+.ctl label{color:var(--faint);font-size:12px}
+.num{font-variant-numeric:tabular-nums;font-weight:650;color:var(--gold)}
+select,input{background:var(--card2);color:var(--ink);border:1px solid var(--line2);
+  border-radius:6px;padding:4px 7px;font:inherit;font-size:13px}
+input[type=search]{width:200px}
+button{background:var(--card2);color:var(--ink);border:1px solid var(--line2);
+  border-radius:7px;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer;
+  transition:border-color .12s,background .12s}
+button:hover{border-color:var(--gold)}
+button.on{background:var(--gold);color:#2a2113;border-color:var(--gold);font-weight:650}
+.seg{display:flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+.seg button{border:0;border-radius:0;border-right:1px solid var(--line2)}
+.seg button:last-child{border-right:0}
+.cartday{background:rgba(168,116,212,.14);border:1px solid rgba(168,116,212,.5);
+  color:#d9bbf2;border-radius:8px;padding:4px 10px;font-size:12.5px}
+.bar{height:6px;background:#15120d;border-radius:4px;overflow:hidden;flex:1;min-width:80px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--now),var(--gold))}
+
+.tabs{display:flex;gap:2px;flex-wrap:wrap;margin:16px 0 0}
+.tabs button{border:0;border-radius:8px 8px 0 0;background:none;color:var(--dim);
+  padding:9px 14px;border-bottom:2px solid transparent}
+.tabs button:hover{background:var(--card);color:var(--ink)}
+.tabs button.on{background:var(--bg);color:var(--gold);border-bottom-color:var(--gold);font-weight:650}
+.tabs button small{color:var(--faint);font-weight:400;font-size:11px}
+.tabs button.on small{color:var(--dim)}
+
+main{padding:20px 26px 40px;max-width:1140px;margin:0 auto}
+.legend{display:flex;gap:7px;flex-wrap:wrap;margin:0 0 18px}
+.b{font-size:11.5px;padding:2px 9px;border-radius:999px;white-space:nowrap;
+  display:inline-block;border:1px solid transparent}
+button.b{font:inherit;font-size:11.5px;cursor:pointer}
+.b.sel{box-shadow:0 0 0 2px var(--gold);font-weight:700}
+.b.zero{opacity:.3}
+.cnt{font-weight:700;margin-left:5px}
+.b.now{background:rgba(103,184,107,.16);border-color:rgba(103,184,107,.55);color:#9fdca2}
+.b.cond{background:rgba(217,173,68,.16);border-color:rgba(217,173,68,.55);color:#edd188}
+.b.later{background:rgba(93,148,208,.16);border-color:rgba(93,148,208,.55);color:#a7c8ef}
+.b.last{background:rgba(224,130,64,.16);border-color:rgba(224,130,64,.55);color:#f2b183}
+.b.past{background:rgba(210,88,79,.16);border-color:rgba(210,88,79,.55);color:#f0a39c}
+.b.cart{background:rgba(168,116,212,.16);border-color:rgba(168,116,212,.55);color:#d6b4f0}
+.b.g{background:var(--card2);border-color:var(--line2);color:#b9a98c}
+.b.loc{background:rgba(93,148,208,.1);border-color:#4a6d8c;color:#a9c6dd;cursor:pointer}
+.b.gate{background:rgba(227,185,97,.12);border-color:#8d7334;color:#e8ca8a;cursor:pointer}
+.b.loc:hover,.b.gate:hover{border-color:var(--gold)}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:15px 17px;margin-bottom:16px}
+.panel h2{margin:0 0 11px;font-size:16px;color:var(--gold);font-weight:650}
+.panel h2 em{font-style:normal;font-size:12.5px;color:var(--dim);font-weight:400}
+.room{display:flex;flex-wrap:wrap;gap:9px;align-items:baseline;
+  border-bottom:1px solid var(--line);padding-bottom:9px}
+.room span{font-size:12.5px;color:var(--dim);font-weight:400}
+
+.flat{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.item{background:var(--card2);border-radius:8px;padding:8px 10px;
+  border-left:3px solid transparent}
+.item:hover{background:#3b3429}
+.item.ok{background:#2a3326;border-left-color:var(--now);opacity:.7}
+.irow{display:flex;gap:8px;align-items:flex-start}
+.ipick{display:flex;gap:9px;align-items:flex-start;min-height:24px;flex:1;cursor:pointer}
+.ipick input{width:16px;height:16px;margin:3px 0 0;accent-color:var(--gold)}
+.iname{font-size:14px;font-weight:550}
+.item.ok .iname{text-decoration:line-through;color:var(--dim)}
+.tag{color:var(--faint);font-size:12px;font-weight:400}
+.dot{padding:0 8px;height:23px;font-size:11.5px;color:var(--dim);border-radius:6px}
+.ibody{padding-left:25px}
+.badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.warn{background:rgba(210,88,79,.12);border:1px solid rgba(210,88,79,.45);
+  color:#f0bdb8;font-size:12.5px;padding:7px 9px;border-radius:7px;margin-top:7px}
+
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));
+  align-items:start;margin-top:14px}
+.bundle{background:var(--card2);border:1px solid var(--line2);border-radius:11px;padding:13px 15px}
+.bundle h3{margin:0 0 4px;font-size:15px;font-weight:650;display:flex;gap:8px;
+  align-items:center;flex-wrap:wrap}
+.meta{font-size:12px;color:var(--dim);margin-bottom:9px}
+.bundle .bar{margin-bottom:9px}
+.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.items .item{background:#2b2620}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="_content.js"></script>
+<script src="_render.js"></script>
+<script>
+document.getElementById('app').innerHTML = build({ h1: 'Закрыть за первый год' });
+// шапке нужна внутренняя обёртка под общую ширину
+const h = document.querySelector('header');
+h.innerHTML = '<div class="hwrap">' + h.innerHTML + '</div>';
+</script>
+</body>
+</html>
