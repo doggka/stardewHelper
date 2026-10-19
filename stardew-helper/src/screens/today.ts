@@ -31,14 +31,25 @@ export function urgentCrops(): { it: Item; last: number; left: number }[] {
   return out.sort((a, b) => a.left - b.left);
 }
 
-/** Что ловится прямо сейчас: сезон, погода и время уже учтены в статусе. */
-function biting(): Item[] {
+/**
+ * Что реально можно добыть сегодня: сезон и погода уже совпали, осталось
+ * максимум попасть во время суток. Тот же критерий, по которому строка
+ * предмета подсвечивается в комнатах — иначе блок и комнаты расходились бы
+ * в советах.
+ */
+function availableToday(): Item[] {
   return ALL.filter((it) => {
     if (it.bundle.room.extra || done(it) || bprog(it.bundle).ok) return false;
-    if (!it.t && !/[Лл]овится|[Оо]кеан|[Рр]ек/.test(it.src || '')) return false;
-    return st(it).lvl === 'now' || (st(it).lvl === 'cond' && !it.c);
+    const s = st(it);
+    return s.lvl === 'now' || (s.lvl === 'cond' && !s.hard);
   });
 }
+
+/**
+ * Рыба — это комната Аквариума, а не слова «ловится» и «океан» в описании,
+ * как было раньше. Описание пишется для человека, опираться на него нельзя.
+ */
+const isFish = (it: Item): boolean => it.bundle.room.id === 'fishtank';
 
 /** Последнее, что отдал мод-мостик. Обновляется при возврате фокуса в окно. */
 let bridgeState: BridgeState | null = null;
@@ -136,26 +147,42 @@ export function todayHTML(): string {
   const crops = urgentCrops();
   if (crops.length) {
     const c = crops[0];
-    rows.push('<div class="trow' + (c.left <= 1 ? ' urgent' : '') + '"><span class="tico">🌱</span><div>'
-      + '<b>' + esc(c.it.n) + (c.left <= 0 ? ' — сажай сегодня' : ' — осталось ' + c.left + ' дн. на посадку') + '</b>'
-      + '<span class="tsub">растёт ' + c.it.grow + ' дней, крайний день посадки — ' + c.last + ' '
+    rows.push(expandable('crops', c.left <= 1 ? 'urgent' : '', '🌱',
+      esc(c.it.n) + (c.left <= 0 ? ' — сажай сегодня' : ' — осталось ' + c.left + ' дн. на посадку'),
+      'растёт ' + c.it.grow + ' дней, крайний день посадки — ' + c.last + ' '
       + SEASON_RU[S.season].toLowerCase()
-      + (crops.length > 1 ? '. Ещё ' + (crops.length - 1) + ' на подходе' : '') + '</span>'
-      + '</div></div>');
+      + (crops.length > 1 ? '. Ещё ' + (crops.length - 1) + ' на подходе' : ''),
+      crops.map((x) => x.it)));
   }
 
-  // 3. Рыба и прочее, что доступно именно сейчас
-  const now = biting();
-  if (now.length) {
-    rows.push(expandable('now', '', '🎣',
-      'Клюёт сейчас: ' + now.slice(0, 3).map((i) => esc(i.n)).join(', ')
-      + (now.length > 3 ? ' и ещё ' + (now.length - 3) : ''),
-      esc(now[0].t || 'в это время суток') + ' · '
-      + (S.weather === 'rain' ? 'дождь' : 'ясно'),
-      now));
+  const avail = availableToday();
+
+  // 3. Рыбалка — отдельно, потому что это решение «идти или не идти»,
+  //    а не просто список. Ответ даём в заголовке.
+  const fish = avail.filter(isFish);
+  if (fish.length) {
+    const lastOnes = fish.filter((i) => st(i).last);
+    rows.push(expandable('fish', lastOnes.length ? 'urgent' : '', '🎣',
+      'Рыбалка сегодня: ' + fish.length
+      + (lastOnes.length ? ', из них ' + lastOnes.length + ' в последний сезон' : ''),
+      lastOnes.length
+        ? 'идти стоит: ' + lastOnes.slice(0, 3).map((i) => esc(i.n)).join(', ')
+          + ' иначе в этом году уже не достать'
+        : 'ничего не горит — можно и не ходить, всё ловится и дальше',
+      fish));
   }
 
-  // 4. Торговка. Если мод-мостик отдал список — разбираем его по нашим данным
+  // 4. Всё остальное, что доступно именно сейчас
+  const other = avail.filter((i) => !isFish(i));
+  if (other.length) {
+    rows.push(expandable('now', '', '🧺',
+      'Можно взять сейчас: ' + other.slice(0, 3).map((i) => esc(i.n)).join(', ')
+      + (other.length > 3 ? ' и ещё ' + (other.length - 3) : ''),
+      'сезон и погода подходят' + (S.weather === 'rain' ? ' · дождь' : ''),
+      other));
+  }
+
+  // 5. Торговка. Если мод-мостик отдал список — разбираем его по нашим данным
   rows.push(cartRow(today, nx));
 
   return '<div class="today">'

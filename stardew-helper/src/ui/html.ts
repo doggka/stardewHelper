@@ -155,8 +155,10 @@ export function filterBarHTML(): string {
   if (filterActive()) {
     const tot = ALL.filter((i) => !i.bundle.room.extra).length;
     const vis = ALL.filter((i) => !i.bundle.room.extra && visible(i)).length;
-    h += '<span class="pill">показано ' + vis + ' из ' + tot + '</span>'
-      + '<button id="fclear">× сбросить фильтр</button>';
+    // заметно: при активном фильтре комнаты без подходящих узелков
+    // пропадают целиком, и это легко принять за поломку
+    h += '<span class="pill on">фильтр включён · показано ' + vis + ' из ' + tot + '</span>'
+      + '<button id="fclear" class="fclear">× сбросить фильтр</button>';
   }
   h += '</div>';
   return h;

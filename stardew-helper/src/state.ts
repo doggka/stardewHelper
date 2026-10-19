@@ -40,8 +40,17 @@ export interface AppState {
   bySave: Record<string, Progress>;
 }
 
-const KEY = 'sdv-helper-v2';
+const KEY = 'sdv-helper-v3';
+const V2_KEY = 'sdv-helper-v2';
 const OLD_KEY = 'sdv-bundles-v1';
+
+/**
+ * При переносе с v2 не тащим фильтры. Раньше их ставили кнопки блока
+ * «Сегодня», потом кнопки убрали — а сохранённое значение осталось
+ * и продолжало прореживать комнаты: комната, где под фильтр не попал
+ * ни один узелок, пропускается целиком.
+ */
+const DROP_ON_UPGRADE = ['filters', 'locFilter', 'hideDone'];
 
 function defaults(): AppState {
   return {
@@ -55,6 +64,7 @@ function defaults(): AppState {
 
 const SCREENS = ['welcome', 'mods', 'tracker'];
 const TABS = ['rooms', 'plan', 'cart'];
+const TODAY_ROWS = ['last', 'crops', 'fish', 'now'];
 
 /**
  * Приводит состояние в рабочий вид. Нужен и при загрузке, и при импорте файла:
@@ -74,7 +84,7 @@ export function sanitize(s: AppState): void {
   if (!Array.isArray(s.openSrc)) s.openSrc = [];
   if (!Array.isArray(s.openBundles)) s.openBundles = [];
   if (!Array.isArray(s.todayOpen)) s.todayOpen = [];
-  s.todayOpen = s.todayOpen.filter((k) => k === 'last' || k === 'now');
+  s.todayOpen = s.todayOpen.filter((k) => TODAY_ROWS.indexOf(k) >= 0);
   if (typeof s.locFilter !== 'string') s.locFilter = null;
   s.hideDone = !!s.hideDone;
   s.y1guarantee = !!s.y1guarantee;
@@ -106,8 +116,14 @@ export function progress(): Progress {
 export function load(): void {
   try {
     const raw = localStorage.getItem(KEY);
+    const v2 = raw ? null : localStorage.getItem(V2_KEY);
     if (raw) {
       Object.assign(S, JSON.parse(raw));
+    } else if (v2) {
+      // галочки по сейвам переносим полностью, фильтры — нет
+      const o = JSON.parse(v2) as Record<string, unknown>;
+      DROP_ON_UPGRADE.forEach((k) => delete o[k]);
+      Object.assign(S, o);
     } else {
       // Миграция со старой браузерной версии: её единственный прогресс
       // становится ручным режимом, чтобы ничего не потерялось.

@@ -232,9 +232,19 @@ document.addEventListener('change', (e) => {
   save(); render();
 });
 
+/**
+ * Все атрибуты, которые что-то значат при клике. Ищем ближайший элемент
+ * с любым из них, а не смотрим только на цель клика: у кнопок внутри есть
+ * `<span>`-ы, и попадание по тексту проваливалось мимо обработчика —
+ * свёрнутый узелок разворачивался только при клике в зазор между словами.
+ */
+const CLICKABLE = ['win', 'ext', 'f', 'locfilter', 'sugg', 'loc', 'src', 'w',
+  'fold', 'today', 't', 'act'].map((a) => '[data-' + a + ']').join(',');
+
 document.addEventListener('click', (e) => {
   const el = e.target as HTMLElement;
-  const d = el.dataset;
+  const hit = el.closest<HTMLElement>(CLICKABLE) ?? el;
+  const d = hit.dataset;
 
   // клик мимо открытого меню — закрыть и ничего больше не делать
   if ((menuOpen || playOpen) && !el.closest('.menuwrap')) {
@@ -254,7 +264,7 @@ document.addEventListener('click', (e) => {
   if (d.ext) { openExternal(d.ext); return; }
   if (el.id === 'fclear') { S.filters = []; S.hideDone = false; S.locFilter = null; save(); render(); return; }
   if (d.f !== undefined) {
-    if (el.classList.contains('zero')) return;
+    if (hit.classList.contains('zero')) return;
     const i = S.filters.indexOf(d.f);
     if (i >= 0) S.filters.splice(i, 1);
     else S.filters.push(d.f);
@@ -291,10 +301,7 @@ document.addEventListener('click', (e) => {
     S.tab = d.t; menuOpen = false; clearRecent();
     save(); render(); shell.scrollTop = 0; return;
   }
-  // ищем ближайший data-act, а не только у самого target: у кнопок есть
-  // вложенные подписи, и клик по ним иначе проваливается мимо обработчика
-  const actEl = el.closest<HTMLElement>('[data-act]');
-  if (actEl?.dataset.act) { void action(actEl.dataset.act, actEl); return; }
+  if (d.act) { void action(d.act, hit); return; }
 });
 
 /*
