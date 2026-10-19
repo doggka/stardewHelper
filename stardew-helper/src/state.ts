@@ -33,6 +33,8 @@ export interface AppState {
   openSrc: string[];
   /** закрытые узелки, которые пользователь развернул вручную */
   openBundles: string[];
+  /** раскрытые строки блока «Сегодня»: 'last' | 'now' */
+  todayOpen: string[];
 
   /** прогресс по каждому сейву отдельно */
   bySave: Record<string, Progress>;
@@ -46,7 +48,7 @@ function defaults(): AppState {
     screen: 'welcome', saveId: 'manual', save: null, modsSeen: false, launchMode: 'smapi',
     season: 0, day: 1, weather: 'sun', tab: 'rooms', q: '',
     y1guarantee: false, filters: [], hideDone: false, locFilter: null,
-    openSrc: [], openBundles: [],
+    openSrc: [], openBundles: [], todayOpen: [],
     bySave: {},
   };
 }
@@ -71,6 +73,8 @@ export function sanitize(s: AppState): void {
   if (!Array.isArray(s.filters)) s.filters = [];
   if (!Array.isArray(s.openSrc)) s.openSrc = [];
   if (!Array.isArray(s.openBundles)) s.openBundles = [];
+  if (!Array.isArray(s.todayOpen)) s.todayOpen = [];
+  s.todayOpen = s.todayOpen.filter((k) => k === 'last' || k === 'now');
   if (typeof s.locFilter !== 'string') s.locFilter = null;
   s.hideDone = !!s.hideDone;
   s.y1guarantee = !!s.y1guarantee;

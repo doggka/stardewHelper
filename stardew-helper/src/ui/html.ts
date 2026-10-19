@@ -1,4 +1,4 @@
-import type { Bundle, Item, Room } from '../types';
+import type { Bundle, Item, Room, Status } from '../types';
 import { LVL, LVL_NAME, LVL_ORDER, SEASON_RU, WIKI } from '../data/constants';
 import { LOC } from '../data/locations';
 import { ALL, S, progress } from '../state';
@@ -31,6 +31,23 @@ export interface ItemOpts {
   lastIsImplied?: boolean;
 }
 
+/**
+ * Насколько строка должна бросаться в глаза.
+ *
+ * «hint-now» — в сезоне, условий нет: иди и возьми, но спешки нет.
+ * «hint-window» — сезон и погода уже совпали, осталось попасть во время
+ * суток. Это и есть «весна, дождь, ночь»: день подходящий, и второго
+ * такого может не быть — красим заметнее.
+ * Остальное (не та погода, закрытый доступ, другой сезон, торговка) не
+ * красим вовсе: подсветка того, что сегодня всё равно не взять, только
+ * мешает выбирать.
+ */
+function pickHint(s: Status): string {
+  if (s.lvl === 'now') return 'hint-now' + (s.last ? ' hint-last' : '');
+  if (s.lvl === 'cond' && !s.hard) return 'hint-window' + (s.last ? ' hint-last' : '');
+  return '';
+}
+
 export function itemHTML(it: Item, opts: ItemOpts = {}): string {
   const s = st(it), d = done(it), ci = cartInfo(it);
   const q = it.q ? ' <span class="qty">×' + it.q + '</span>' : '';
@@ -45,7 +62,8 @@ export function itemHTML(it: Item, opts: ItemOpts = {}): string {
   s.cond.forEach((c) => (bd += '<span class="b g">' + esc(c) + '</span>'));
   if (it.tree && !d) bd += '<span class="b g">дерево растёт 28 дней</span>';
 
-  return '<div class="item' + (d ? ' ok' : '') + (open ? ' open' : '') + '" data-id="' + it.id + '">'
+  return '<div class="item' + (d ? ' ok' : '') + (open ? ' open' : '')
+    + (d ? '' : ' ' + pickHint(s)) + '" data-id="' + it.id + '">'
     // имя внутри label: кликабельна вся строка, а не квадрат 15px,
     // и скринридер наконец произносит, что именно он отмечает
     + '<div class="irow">'

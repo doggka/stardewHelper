@@ -56,19 +56,19 @@ export function st(it: Item): Status {
   if (it.c) cond.push(it.c);
   const el = effLoc(it);
   const gated = el && LOC[el] && LOC[el].gate;
-  const hard = (it.w && it.w !== S.weather) || !!it.c || !!gated;
-  if (!it.s) return { lvl: hard || cond.length ? 'cond' : 'now', cond, last: false };
+  const hard = !!((it.w && it.w !== S.weather) || !!it.c || !!gated);
+  if (!it.s) return { lvl: hard || cond.length ? 'cond' : 'now', cond, last: false, hard };
   const inS = it.s.indexOf(cur as never) >= 0;
   const later = it.s.some((x) => x > cur);
-  if (inS) return { lvl: hard ? 'cond' : cond.length ? 'cond' : 'now', cond, last: !later };
+  if (inS) return { lvl: hard ? 'cond' : cond.length ? 'cond' : 'now', cond, last: !later, hard };
   if (later) {
     const nx = Math.min.apply(null, it.s.filter((x) => x > cur) as number[]);
-    return { lvl: 'later', cond: [SEASON_FROM[nx]].concat(cond), last: false };
+    return { lvl: 'later', cond: [SEASON_FROM[nx]].concat(cond), last: false, hard: true };
   }
-  if (it.alsoAny) return { lvl: 'cond', cond: ['вне сезона — только альтернативный источник'].concat(cond), last: false };
+  if (it.alsoAny) return { lvl: 'cond', cond: ['вне сезона — только альтернативный источник'].concat(cond), last: false, hard: true };
   const ci = cartInfo(it);
-  if (ci.price) return { lvl: 'cart', cond: ['вне сезона — только у торговки, ' + ci.price + ' з.'].concat(cond), last: false };
-  return { lvl: 'past', cond: [ci.no!].concat(cond), last: false };
+  if (ci.price) return { lvl: 'cart', cond: ['вне сезона — только у торговки, ' + ci.price + ' з.'].concat(cond), last: false, hard: true };
+  return { lvl: 'past', cond: [ci.no!].concat(cond), last: false, hard: true };
 }
 
 /* ===================== ПРОГРЕСС ===================== */

@@ -99,6 +99,25 @@ function stripTags(s: string): string {
   return esc(s.replace(/<[^>]+>/g, ''));
 }
 
+/**
+ * Строка со списком, который раскрывается на месте.
+ *
+ * Раньше кнопка ставила глобальный фильтр по статусу: комнаты ниже
+ * прореживались, часть из них пропадала целиком, и чтобы вернуться, надо
+ * было найти «сбросить фильтр». Теперь список открывается прямо здесь —
+ * ровно тот набор, который посчитан в заголовке.
+ */
+function expandable(key: string, cls: string, ico: string, head: string, sub: string, items: Item[], opts: { lastIsImplied?: boolean } = {}): string {
+  const open = S.todayOpen.indexOf(key) >= 0;
+  return '<div class="trow' + (cls ? ' ' + cls : '') + (open ? ' open' : '') + '">'
+    + '<span class="tico">' + ico + '</span><div>'
+    + '<b>' + head + '</b><span class="tsub">' + sub + '</span></div>'
+    + '<button data-today="' + key + '" aria-expanded="' + open + '">'
+    + (open ? 'Свернуть' : 'Показать') + '</button>'
+    + (open ? '<div class="tlist">' + flat(items, opts) + '</div>' : '')
+    + '</div>';
+}
+
 export function todayHTML(): string {
   const today = cartToday(), nx = nextCart();
   const rows: string[] = [];
@@ -107,10 +126,10 @@ export function todayHTML(): string {
   const closing = ALL.filter((it) => !it.bundle.room.extra && !done(it)
     && !bprog(it.bundle).ok && st(it).last);
   if (closing.length) {
-    rows.push('<div class="trow urgent"><span class="tico">⏳</span><div>'
-      + '<b>Закрывается этим сезоном: ' + closing.length + '</b>'
-      + '<span class="tsub">дальше только торговка или следующий год</span>'
-      + '</div><button data-act="filterLast">Показать</button></div>');
+    rows.push(expandable('last', 'urgent', '⏳',
+      'Закрывается этим сезоном: ' + closing.length,
+      'дальше только торговка или следующий год',
+      closing, { lastIsImplied: true }));
   }
 
   // 2. Культуры, которым вот-вот станет поздно
@@ -128,12 +147,12 @@ export function todayHTML(): string {
   // 3. Рыба и прочее, что доступно именно сейчас
   const now = biting();
   if (now.length) {
-    rows.push('<div class="trow"><span class="tico">🎣</span><div>'
-      + '<b>Клюёт сейчас: ' + now.slice(0, 3).map((i) => esc(i.n)).join(', ')
-      + (now.length > 3 ? ' и ещё ' + (now.length - 3) : '') + '</b>'
-      + '<span class="tsub">' + esc(now[0].t || 'в это время суток') + ' · '
-      + (S.weather === 'rain' ? 'дождь' : 'ясно') + '</span>'
-      + '</div><button data-act="filterNow">Показать</button></div>');
+    rows.push(expandable('now', '', '🎣',
+      'Клюёт сейчас: ' + now.slice(0, 3).map((i) => esc(i.n)).join(', ')
+      + (now.length > 3 ? ' и ещё ' + (now.length - 3) : ''),
+      esc(now[0].t || 'в это время суток') + ' · '
+      + (S.weather === 'rain' ? 'дождь' : 'ясно'),
+      now));
   }
 
   // 4. Торговка. Если мод-мостик отдал список — разбираем его по нашим данным

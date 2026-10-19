@@ -203,6 +203,12 @@ button.b{font:inherit;font-size:12px;line-height:inherit;cursor:pointer}
 .tico{font-size:17px;width:22px;text-align:center;flex:0 0 auto}
 .tsub{display:block;color:var(--dim);font-size:12.5px;margin-top:2px}
 .trow button{padding:5px 12px;font-size:12.5px;flex:0 0 auto}
+/* раскрытый список живёт в той же строке, поэтому строка должна переноситься */
+.trow.open{flex-wrap:wrap}
+.trow.open > button{border-color:var(--line2);color:var(--ink)}
+.tlist{flex:0 0 100%;margin:4px 0 2px;padding-left:35px;
+  border-top:1px solid var(--line)}
+.tlist .flat li:last-child .item{padding-bottom:4px}
 
 /* возврат с справочных экранов */
 .backlink{border:0;background:none;color:var(--dim);padding:0 0 14px;font-size:13.5px}
@@ -243,7 +249,16 @@ ul.items{list-style:none;margin:10px 0 0;padding:0}
 ul.items li{border-bottom:1px solid var(--line)}
 ul.items li:last-child{border-bottom:0}
 
-.item{padding:12px 0}
+/* Полоса слева — единственный признак «это можно взять сегодня». Цвета те же,
+   что у бейджей, новых не заводим. Полоса прозрачная у всех строк, иначе
+   подсвеченные съезжали бы вправо относительно остальных. */
+.item{padding:12px 0 12px 11px;border-left:3px solid transparent;
+  border-radius:0 7px 7px 0}
+.item.hint-now{border-left-color:var(--now)}
+/* сезон и погода уже совпали, осталось время суток — такой день может
+   не повториться, поэтому заметнее: не только полоса, но и фон */
+.item.hint-window{border-left-color:var(--cond);background:#2c2820}
+.item.hint-last{box-shadow:inset 0 0 0 1px rgba(240,145,74,.30)}
 .item.ok{opacity:.45}
 .irow{display:flex;gap:10px;align-items:flex-start}
 /* вся строка с именем — цель клика; раньше попадать надо было в квадрат 15px */

@@ -280,6 +280,13 @@ document.addEventListener('click', (e) => {
     else S.openBundles.push(d.fold);
     save(); render(); return;
   }
+  // строка блока «Сегодня» раскрывается на месте: ни фильтров, ни перехода
+  if (d.today) {
+    const i = S.todayOpen.indexOf(d.today);
+    if (i >= 0) S.todayOpen.splice(i, 1);
+    else S.todayOpen.push(d.today);
+    save(); render(); return;
+  }
   if (d.t) {
     S.tab = d.t; menuOpen = false; clearRecent();
     save(); render(); shell.scrollTop = 0; return;
@@ -393,17 +400,14 @@ async function action(name: string, el: HTMLElement): Promise<void> {
     S.hideDone = false;
     S.locFilter = null;
     S.q = '';
-    S.tab = 'todo';
+    S.tab = 'rooms';
+    S.todayOpen = [];
     S.modsSeen = false;
     S.screen = 'welcome';
     save();
     render();
     return;
   }
-  // кнопки блока «Сегодня» включают фильтр в списке комнат,
-  // а не уводят на отдельный экран
-  if (name === 'filterLast') { S.filters = ['last']; S.tab = 'rooms'; save(); render(); return; }
-  if (name === 'filterNow') { S.filters = ['now']; S.tab = 'rooms'; save(); render(); return; }
   if (name === 'cartInfo') { S.tab = 'cart'; save(); render(); shell.scrollTop = 0; return; }
 
   if (name === 'clearSearch') {
