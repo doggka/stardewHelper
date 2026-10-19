@@ -22,11 +22,18 @@ namespace StardewHelperBridge
     public class ModEntry : Mod
     {
         private const string OutFile = "state.json";
+        private const string CatalogFile = "catalog.json";
 
         public override void Entry(IModHelper helper)
         {
             helper.Events.GameLoop.DayStarted += (_, _) => Dump("day-started");
-            helper.Events.GameLoop.SaveLoaded += (_, _) => Dump("save-loaded");
+            helper.Events.GameLoop.SaveLoaded += (_, _) =>
+            {
+                Dump("save-loaded");
+                // справочник зависит от сейва (узелки могут быть перемешаны)
+                // и от версии игры, поэтому пишем его при загрузке сейва
+                DumpCatalog();
+            };
             // магазин открыли — ассортимент точно актуален
             helper.Events.Display.MenuChanged += (_, e) =>
             {
@@ -52,6 +59,23 @@ namespace StardewHelperBridge
             {
                 // Мод не должен ронять игру из-за своей вспомогательной задачи
                 this.Monitor.Log($"Не смог выгрузить ассортимент: {ex.Message}", LogLevel.Warn);
+            }
+        }
+
+        private void DumpCatalog()
+        {
+            try
+            {
+                if (!Context.IsWorldReady)
+                    return;
+
+                string path = Path.Combine(this.Helper.DirectoryPath, CatalogFile);
+                File.WriteAllText(path, Catalog.Build(), new UTF8Encoding(false));
+                this.Monitor.Log("Записал справочник узелков.", LogLevel.Trace);
+            }
+            catch (Exception ex)
+            {
+                this.Monitor.Log($"Не смог выгрузить справочник: {ex.Message}", LogLevel.Warn);
             }
         }
 
@@ -95,19 +119,19 @@ namespace StardewHelperBridge
             var sb = new StringBuilder();
             sb.Append('{');
             sb.Append("\"writtenBy\":\"StardewHelperBridge\",");
-            sb.Append($"\"reason\":{Quote(reason)},");
-            sb.Append($"\"saveId\":{Quote(Game1.uniqueIDForThisGame.ToString())},");
+            sb.Append($"\"reason\":{Json.Quote(reason)},");
+            sb.Append($"\"saveId\":{Json.Quote(Game1.uniqueIDForThisGame.ToString())},");
             sb.Append($"\"day\":{Game1.dayOfMonth},");
-            sb.Append($"\"season\":{Quote(Game1.currentSeason)},");
+            sb.Append($"\"season\":{Json.Quote(Game1.currentSeason)},");
             sb.Append($"\"year\":{Game1.year},");
-            sb.Append($"\"weather\":{Quote(Game1.isRaining ? "rain" : "sun")},");
+            sb.Append($"\"weather\":{Json.Quote(Game1.isRaining ? "rain" : "sun")},");
             sb.Append($"\"cartPresent\":{(present ? "true" : "false")},");
             sb.Append("\"cart\":[");
             for (int i = 0; i < items.Count; i++)
             {
                 if (i > 0) sb.Append(',');
                 sb.Append('{');
-                sb.Append($"\"name\":{Quote(items[i].Name)},");
+                sb.Append($"\"name\":{Json.Quote(items[i].Name)},");
                 sb.Append($"\"price\":{items[i].Price},");
                 sb.Append($"\"stock\":{items[i].Stock}");
                 sb.Append('}');
@@ -116,27 +140,5 @@ namespace StardewHelperBridge
             return sb.ToString();
         }
 
-        /// <summary>Экранирование строки для JSON — без внешних библиотек.</summary>
-        private static string Quote(string? s)
-        {
-            if (s == null) return "null";
-            var sb = new StringBuilder("\"");
-            foreach (char c in s)
-            {
-                switch (c)
-                {
-                    case '"': sb.Append("\\\""); break;
-                    case '\\': sb.Append("\\\\"); break;
-                    case '\n': sb.Append("\\n"); break;
-                    case '\r': sb.Append("\\r"); break;
-                    case '\t': sb.Append("\\t"); break;
-                    default:
-                        if (c < 0x20) sb.Append("\\u").Append(((int)c).ToString("x4"));
-                        else sb.Append(c);
-                        break;
-                }
-            }
-            return sb.Append('"').ToString();
-        }
     }
 }
