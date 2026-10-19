@@ -54,12 +54,15 @@ a{color:var(--acc)}
 
 /* ---------- шапка ----------
    Три смысловых слоя вместо шести рядов: где я и когда → поиск → навигация.
-   Служебные действия ушли в меню «⋯»: ими пользуются раз в месяц. */
+   Служебные действия ушли в меню «⋯»: ими пользуются раз в месяц.
+
+   Шапка закреплена целиком и по высоте не меняется: поиск и дата должны быть
+   под рукой при любой прокрутке. Раз она висит постоянно — отступы поджаты. */
 header{position:sticky;top:0;z-index:20;background:var(--bg);
-  border-bottom:1px solid var(--line);padding:12px 32px 0;max-width:1180px;margin:0 auto}
+  border-bottom:1px solid var(--line);padding:9px 32px 0;max-width:1180px;margin:0 auto}
 
 .ctxbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;
-  min-height:34px;padding-bottom:9px}
+  min-height:32px;padding-bottom:7px}
 .ctx-sp{flex:1}
 .farm{font-size:16px;font-weight:650}
 .farm.manual{color:var(--dim);font-weight:500}
@@ -110,7 +113,7 @@ header{position:sticky;top:0;z-index:20;background:var(--bg);
 .searchrow:focus-within{border-color:var(--faint)}
 .searchrow.active{border-color:var(--acc)}
 .searchrow .sicon{font-size:14px;opacity:.75}
-.searchrow input{flex:1;background:none;border:0;padding:11px 0;font-size:14.5px;
+.searchrow input{flex:1;background:none;border:0;padding:9px 0;font-size:14.5px;
   border-radius:0;min-width:0}
 .searchrow input:focus{outline:none}
 .searchrow button{background:none;border:0;color:var(--dim);padding:4px 6px;font-size:14px}
@@ -136,17 +139,9 @@ button:disabled:hover{background:transparent;border-color:var(--line)}
 .bar{height:4px;background:var(--line);border-radius:3px;overflow:hidden;flex:1;min-width:80px}
 .bar i{display:block;height:100%;background:var(--now)}
 
-/* свёрнутое состояние: остаются только вкладки */
-.shell.compact header{padding-top:0}
-.shell.compact .ctxbar,
-.shell.compact .searchrow{max-height:0;opacity:0;margin:0;padding-top:0;padding-bottom:0;
-  border-width:0;overflow:hidden;pointer-events:none}
-.ctxbar,.searchrow{max-height:200px;transition:max-height .18s ease,opacity .14s ease,
-  padding .18s ease,margin .18s ease}
-
-.tabs{display:flex;gap:0;flex-wrap:wrap;margin-top:10px}
+.tabs{display:flex;gap:0;flex-wrap:wrap;margin-top:6px}
 .tabs button{border:0;border-radius:0;background:none;color:var(--dim);
-  padding:10px 2px;margin-right:20px;border-bottom:2px solid transparent}
+  padding:8px 2px;margin-right:20px;border-bottom:2px solid transparent}
 .tabs button:hover{background:none;color:var(--ink)}
 .tabs button.on{background:none;color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
 .tabs button small{display:none}

@@ -275,18 +275,13 @@ document.addEventListener('click', (e) => {
   if (d.act) { void action(d.act, el); return; }
 });
 
-/**
- * Шапка сворачивается при прокрутке вниз и возвращается при прокрутке вверх.
- * При окне 900×600 она занимала треть высоты постоянно — а нужна не всё время.
- * Класс висит на shell: его render() не пересоздаёт, в отличие от содержимого.
+/*
+ * Сворачивания шапки при прокрутке здесь больше нет. Оно давало петлю:
+ * схлопывание меняло высоту → содержимое подпрыгивало → браузер правил
+ * позицию прокрутки → обработчик видел «скроллят вверх» → шапка
+ * разворачивалась обратно. На медленной прокрутке это было видно как дёрганье.
+ * Плюс оно прятало ровно то, что нужно всегда: поиск и дату.
  */
-let lastScroll = 0;
-shell.addEventListener('scroll', () => {
-  const y = shell.scrollTop;
-  if (y > 90 && y > lastScroll) shell.classList.add('compact');
-  else if (y < lastScroll - 4 || y < 40) shell.classList.remove('compact');
-  lastScroll = y;
-}, { passive: true });
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && menuOpen) {
