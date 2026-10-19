@@ -16,6 +16,10 @@
 
 param(
     [string]$GamePath,
+    # Куда класть скачанные с Nexus архивы. Путь задаёт приложение: сам скрипт
+    # лежит внутри сборки, и папка рядом с ним у портативной версии оказалась бы
+    # во временном каталоге, а у распакованной стиралась бы при пересборке.
+    [string]$DropDir,
     [switch]$Yes,
     [switch]$OpenNexus,
     [switch]$DryRun
@@ -93,12 +97,13 @@ Say "Игра: $game" Green
 if (-not (Ask 'Продолжить? (y/n)')) { Say 'Отменено.'; exit 0 }
 
 $mods = Join-Path $game 'Mods'
-$work = Join-Path $PSScriptRoot 'bootstrap-temp'
-$drop = Join-Path $PSScriptRoot 'drop'
+$work = Join-Path $env:TEMP 'stardew-helper-bootstrap'
+$drop = if ($DropDir) { $DropDir } else { Join-Path $PSScriptRoot 'drop' }
 if (-not $DryRun) {
     New-Item -ItemType Directory -Force $work | Out-Null
     New-Item -ItemType Directory -Force $drop | Out-Null
 }
+Say "Папка для скачанных модов: $drop"
 
 function Get-LatestAsset($repo, $pattern) {
     $rel = Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest" -Headers @{ 'User-Agent' = 'stardew-helper' }

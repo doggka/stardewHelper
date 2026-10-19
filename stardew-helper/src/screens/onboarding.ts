@@ -7,6 +7,7 @@ import { esc } from '../ui/html';
 let saves: SaveSummary[] = [];
 let mods: ModInfo[] = [];
 let gamePath: string | null = null;
+let dropPath = '';
 
 /** Описания модов живут здесь, а не в процессе Electron: это текст для человека. */
 const MOD_TEXT: Record<string, { what: string; why: string; url: string }> = {
@@ -93,6 +94,7 @@ async function modsHTML(): Promise<string> {
   if (bridge) {
     mods = await bridge.game.mods();
     gamePath = (await bridge.game.detect()).path;
+    dropPath = await bridge.game.dropDir();
   }
 
   const cards = mods.map((m) => {
@@ -125,6 +127,9 @@ async function modsHTML(): Promise<string> {
     + 'SMAPI и UI Info Suite ставятся автоматически. Остальные живут только на Nexus, '
     + 'и скачать их скриптом без логина нельзя — скрипт откроет страницы, ты скачаешь zip '
     + 'и кинешь в папку <code>drop</code>, а он разложит по <code>Mods</code>.</p>'
+    + '<div class="droprow"><span class="sb-meta">Папка для скачанных архивов:</span>'
+    + '<code class="droppath">' + esc(dropPath || '—') + '</code>'
+    + '<button data-act="openDrop">Открыть папку</button></div>'
     + '<div class="actions" style="justify-content:flex-start;margin-top:10px">'
     + '<button data-act="bootstrapDry">Проверить</button>'
     + '<button data-act="bootstrapRun" class="on">Установить</button>'
@@ -210,6 +215,13 @@ export async function action(name: string, el: HTMLElement): Promise<void> {
 
   if (name === 'bootstrapCancel') {
     if (bridge) await bridge.game.cancelBootstrap();
+    return;
+  }
+
+  if (name === 'openDrop') {
+    if (!bridge) return;
+    const err = await bridge.game.openDropDir();
+    if (err) alert('Не удалось открыть папку: ' + err);
     return;
   }
 

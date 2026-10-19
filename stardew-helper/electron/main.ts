@@ -125,7 +125,8 @@ function registerIpc() {
       // cmd /c start — единственный надёжный способ получить настоящую консоль
       // с рабочим вводом: напрямую spawn даёт процесс без доступного stdin.
       spawn('cmd.exe', ['/c', 'start', '"Установка модов"', 'powershell.exe',
-        '-NoExit', '-ExecutionPolicy', 'Bypass', '-File', script], {
+        '-NoExit', '-ExecutionPolicy', 'Bypass', '-File', `"${script}"`,
+        '-DropDir', `"${dropDir()}"`], {
         detached: true,
         stdio: 'ignore',
         windowsVerbatimArguments: true,
@@ -135,11 +136,35 @@ function registerIpc() {
       return { started: false, error: String(err) };
     }
   });
+
+  ipcMain.handle('game:dropDir', () => dropDir());
+  ipcMain.handle('game:openDropDir', () => {
+    const d = dropDir();
+    try {
+      fs.mkdirSync(d, { recursive: true });
+    } catch {
+      /* если не создалась — shell всё равно покажет, что не так */
+    }
+    return shell.openPath(d);
+  });
 }
 
 /* ---- запуск бутстрапа с перехватом вывода ---- */
 
 let bootstrap: ReturnType<typeof spawn> | null = null;
+
+/**
+ * Папка, куда пользователь кладёт скачанные с Nexus архивы.
+ *
+ * Держим её в данных приложения, а не рядом со скриптом или с exe:
+ * у портативной сборки скрипт распаковывается во временный каталог и пропадает
+ * после закрытия, а оба exe лежат внутри release, который стирается при каждой
+ * пересборке. Путь показывается на экране модов, и рядом есть кнопка «Открыть
+ * папку», так что прятаться ему не страшно.
+ */
+function dropDir(): string {
+  return path.join(app.getPath('userData'), 'drop');
+}
 
 function bootstrapScript(): string | null {
   // В собранном приложении скрипт лежит в resources рядом с asar:
@@ -160,7 +185,7 @@ function runBootstrap(opts: { mode?: string; openNexus?: boolean }): { started: 
   // Раньше здесь был булев флаг, и его пропажа молча превращалась в установку.
   const install = opts?.mode === 'install';
 
-  const args = ['-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', script];
+  const args = ['-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', script, '-DropDir', dropDir()];
   args.push(install ? '-Yes' : '-DryRun');
   if (opts?.openNexus) args.push('-OpenNexus');
 
@@ -168,8 +193,10 @@ function runBootstrap(opts: { mode?: string; openNexus?: boolean }): { started: 
 
   try {
     // Первой строкой печатаем саму команду: иначе невозможно понять,
-    // в каком режиме скрипт реально запустился.
-    send('bootstrap:line', { line: '> powershell ' + args.join(' '), isErr: false });
+    // в каком режиме скрипт реально запустился. Аргументы с пробелами
+    // берём в кавычки, чтобы строку можно было скопировать и запустить руками.
+    const shown = args.map((a) => (/\s/.test(a) ? '"' + a + '"' : a)).join(' ');
+    send('bootstrap:line', { line: '> powershell ' + shown, isErr: false });
 
     const child = spawn('powershell.exe', args, { windowsHide: true });
     bootstrap = child;

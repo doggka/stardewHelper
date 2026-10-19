@@ -31,6 +31,8 @@ const api = {
       ipcRenderer.invoke('game:runBootstrap', { mode: opts?.mode, openNexus: !!opts?.openNexus }),
     cancelBootstrap: (): Promise<boolean> => ipcRenderer.invoke('game:cancelBootstrap'),
     bootstrapInConsole: (): Promise<unknown> => ipcRenderer.invoke('game:bootstrapInConsole'),
+    dropDir: (): Promise<string> => ipcRenderer.invoke('game:dropDir'),
+    openDropDir: (): Promise<string> => ipcRenderer.invoke('game:openDropDir'),
     onLine: (cb: (line: string, isErr: boolean) => void) => {
       ipcRenderer.removeAllListeners('bootstrap:line');
       ipcRenderer.on('bootstrap:line', (_e, p: { line: string; isErr: boolean }) => cb(p.line, p.isErr));

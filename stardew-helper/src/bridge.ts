@@ -23,6 +23,8 @@ export interface Bridge {
     runBootstrap(opts: { mode: 'dry' | 'install'; openNexus?: boolean }): Promise<{ started: boolean; error?: string }>;
     cancelBootstrap(): Promise<boolean>;
     bootstrapInConsole(): Promise<{ started: boolean; error?: string }>;
+    dropDir(): Promise<string>;
+    openDropDir(): Promise<string>;
     onLine(cb: (line: string, isErr: boolean) => void): void;
     onDone(cb: (code: number) => void): void;
   };
@@ -78,6 +80,8 @@ if (import.meta.env.DEV && location.search.includes('mock') && !window.sdv) {
       runBootstrap: async () => ({ started: false, error: 'заглушка' }),
       cancelBootstrap: async () => false,
       bootstrapInConsole: async () => ({ started: false, error: 'заглушка' }),
+      dropDir: async () => 'C:\\mock\\drop',
+      openDropDir: async () => '',
       onLine: () => {},
       onDone: () => {},
     },
