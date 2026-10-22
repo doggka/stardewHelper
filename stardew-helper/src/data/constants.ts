@@ -7,6 +7,8 @@ export const WI = 3 as Season;
 
 export const SEASON_RU = ['Весна', 'Лето', 'Осень', 'Зима'];
 export const SEASON_FROM = ['с весны', 'с лета', 'с осени', 'с зимы'];
+/** Родительный падеж: «до конца весны». Склонять на лету — лишний код ради четырёх слов. */
+export const SEASON_GEN = ['весны', 'лета', 'осени', 'зимы'];
 export const SEASON_KEY = ['spring', 'summer', 'fall', 'winter'];
 export const DOW = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 export const WIKI = 'https://ru.stardewvalleywiki.com/';

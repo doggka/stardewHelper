@@ -62,7 +62,8 @@ function defaults(): AppState {
 }
 
 const SCREENS = ['welcome', 'mods', 'tracker'];
-const TABS = ['rooms', 'plan', 'cart'];
+// rooms и day — вкладки в шапке; plan и cart — справочники из меню «⋯»
+const TABS = ['rooms', 'day', 'plan', 'cart'];
 const TODAY_ROWS = ['last', 'crops', 'fish', 'now'];
 
 /**

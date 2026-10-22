@@ -1,5 +1,5 @@
 import type { BridgeState, Item } from '../types';
-import { DOW, SEASON_KEY, SEASON_RU } from '../data/constants';
+import { DOW, SEASON_GEN, SEASON_KEY, SEASON_RU } from '../data/constants';
 import { ALL, S } from '../state';
 import { bprog, cartToday, dow, done, nextCart, st } from '../logic/status';
 import { norm } from '../logic/search';
@@ -189,14 +189,17 @@ export function todayHTML(): string {
   const closing = closingAll.filter((it) => !covered(it));
   const already = closingAll.length - closing.length;
   if (closingAll.length) {
+    // Глагол вместо причастия и названия вместо чисел: «Закрывается этим
+    // сезоном: 8 (ещё 3 уже есть)» читалось ребусом и не говорило, что делать.
+    const names = closing.slice(0, 3).map((i) => esc(i.n)).join(', ');
     rows.push(expandable('last', closing.length ? 'urgent' : '', '⏳',
       closing.length
-        ? 'Закрывается этим сезоном: ' + closing.length
-          + (already ? ' (ещё ' + already + ' уже есть)' : '')
-        : 'Закрывается этим сезоном: всё ' + already + ' уже есть у тебя',
+        ? 'Успеть до конца ' + SEASON_GEN[S.season] + ': ' + closing.length
+        : 'До конца ' + SEASON_GEN[S.season] + ' всё успели',
       closing.length
-        ? 'дальше только торговка или следующий год'
-        : 'осталось донести до центра',
+        ? names + (closing.length > 3 ? ' и ещё ' + (closing.length - 3) : '')
+          + ' — потом только у торговки или через год'
+        : 'это уже у тебя, осталось донести до центра',
       closingAll, { lastIsImplied: true }));
   }
 

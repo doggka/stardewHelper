@@ -126,6 +126,23 @@ function trackerChrome(): string {
         : '')
     + '</div>';
 
+  /**
+   * Две вкладки, и только две. Комнаты — состояние узелков, День — всё про
+   * сегодня. План и Торговка остались справочниками в меню «⋯»: если вернуть
+   * и их, мы опять придём к четырём вкладкам, от которых уходили.
+   *
+   * Во время поиска переключатель не показываем: поиск и так уводит
+   * в комнаты и описывает то, что на экране.
+   */
+  const tabsHTML = (): string => {
+    if (S.q) return '';
+    const tab = (k: string, n: string): string =>
+      '<button data-t="' + k + '"' + (S.tab === k ? ' class="on" aria-current="page"' : '') + '>'
+      + n + '</button>';
+    return '<div class="tabs" role="navigation" aria-label="Разделы">'
+      + tab('rooms', 'Комнаты') + tab('day', 'День') + '</div>';
+  };
+
   return '<a class="skip" href="#view">К списку</a><header>'
     // один ряд с переносом: на широком окне всё в строку, на узком само
     // раскладывается в два, без отдельной полупустой полосы
@@ -142,10 +159,14 @@ function trackerChrome(): string {
     + ' value="' + (S.q || '').replace(/"/g, '&quot;') + '">'
     + (S.q ? '<button data-act="clearSearch" aria-label="Сбросить поиск">✕</button>' : '')
     + '</div>'
+    + tabsHTML()
     + '</header>'
     + '<main>'
-    + (S.tab === 'rooms'
+    // во время поиска полоса нужна на любой вкладке: поиск показывает
+    // комнаты, и плашка «Поиск: …» объясняет, почему на экране именно они
+    + (S.tab === 'rooms' || S.q
         ? '<div id="filters">' + filterBarHTML() + '</div>'
+        : S.tab === 'day' ? ''
         : '<button class="backlink" data-t="rooms">← К комнатам</button>')
     + '<div id="view" tabindex="-1">' + renderTrackerBody() + '</div></main>'
     + '<div class="foot">Данные с ru.stardewvalleywiki.com · обычный набор узелков '

@@ -107,16 +107,21 @@ export function bundleHTML(b: Bundle): string {
   // Закрытый узелок по умолчанию свёрнут: смотреть на список того,
   // что уже сдано, незачем. Разворачивается кликом по заголовку.
   if (p.ok && S.openBundles.indexOf(b.id) < 0) {
+    // Подписи «развернуть» нет: карточка кликабельна целиком, и так видно.
+    // Разметка остаётся кнопкой с aria-expanded — скринридер скажет и без
+    // текста, а с клавиатуры по ним ходят.
     return '<div class="bundle done folded">'
-      + '<button class="bfold" data-fold="' + b.id + '" aria-expanded="false">'
+      + '<button class="bfold" data-fold="' + b.id + '"'
+      + ' aria-expanded="false" aria-label="Развернуть: ' + esc(b.name) + '">'
       + '<span class="bf-ok">✓</span>'
       + '<span class="bf-name">' + esc(b.name) + '</span>'
       + '<span class="b g">' + p.n + '/' + p.n + '</span>'
-      + '<span class="bf-more">развернуть</span></button></div>';
+      + '</button></div>';
   }
 
   let h = '<div class="bundle' + (p.ok ? ' done' : '') + '">'
-    + (p.ok ? '<button class="bfold open" data-fold="' + b.id + '" aria-expanded="true">свернуть</button>' : '')
+    + (p.ok ? '<button class="bfold open" data-fold="' + b.id + '"'
+      + ' aria-expanded="true" aria-label="Свернуть: ' + esc(b.name) + '">×</button>' : '')
     + '<h3>' + (p.ok ? '✓ ' : '') + esc(b.name)
 
     + '<span class="b g">' + p.c + '/' + p.n + (b.items && b.items.length > b.slots ? ' (из ' + b.items.length + ')' : '') + '</span></h3>'

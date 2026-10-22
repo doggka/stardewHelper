@@ -154,9 +154,12 @@ export function renderPlan(): string {
 export function renderTrackerBody(): string {
   const t = totals();
   if (t.ok === t.n && S.tab === 'rooms' && !S.q) return renderDone();
-  // Вкладок больше нет: главный экран — комнаты с блоком «Сегодня» сверху.
+  // Две вкладки: Комнаты — состояние узелков, День — всё про сегодня.
   // План и торговка остались справочниками и открываются из меню «⋯».
   if (S.tab === 'plan') return renderPlan();
   if (S.tab === 'cart') return renderCart();
-  return (S.q ? '' : todayHTML()) + renderRooms();
+  // поиск всегда ищет по узелкам, поэтому показывает комнаты независимо
+  // от того, какая вкладка была открыта
+  if (S.tab === 'day' && !S.q) return todayHTML();
+  return renderRooms();
 }
