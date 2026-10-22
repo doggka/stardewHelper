@@ -139,6 +139,8 @@ export interface SaveSummary {
   season: Season;
   day: number;
   year: number;
+  /** погода в долине на сегодня — только «мокро или нет» */
+  weather: Weather;
   gameVersion: string | null;
   /** можно ли импортировать прогресс узелков */
   bundlesSupported: boolean;

@@ -327,6 +327,9 @@ export function applySave(s: SaveSummary): void {
   S.save = s;
   S.season = s.season;
   S.day = s.day;
+  // погода тоже из сейва: раньше её можно было задать только кнопками, и она
+  // оставалась вчерашней до тех пор, пока не переключишь руками
+  S.weather = s.weather;
 
   if (!s.bundlesSupported) return;
 

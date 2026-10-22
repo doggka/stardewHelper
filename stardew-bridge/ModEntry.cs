@@ -48,8 +48,8 @@ namespace StardewHelperBridge
                 if (!Context.IsWorldReady)
                     return;
 
-                var items = ReadCartStock(out bool present);
-                var json = BuildJson(reason, present, items);
+                var items = ReadCartStock(out bool present, out bool flag);
+                var json = BuildJson(reason, present, flag, items);
 
                 string path = Path.Combine(this.Helper.DirectoryPath, OutFile);
                 File.WriteAllText(path, json, new UTF8Encoding(false));
@@ -86,15 +86,21 @@ namespace StardewHelperBridge
         /// ShopBuilder по идентификатору магазина. У повозки он — "Traveler"
         /// (Game1.shop_travelingCart).
         /// </summary>
-        private List<(string Name, int Price, int Stock)> ReadCartStock(out bool present)
+        private List<(string Name, int Price, int Stock)> ReadCartStock(out bool present, out bool flag)
         {
             var result = new List<(string, int, int)>();
             present = false;
+            flag = false;
 
             if (Game1.getLocationFromName("Forest") is not StardewValley.Locations.Forest forest)
                 return result;
 
-            present = forest.travelingMerchantDay;
+            // Источник правды — вычисляемый метод, а не поле travelingMerchantDay.
+            // Поле кэшируется и обновляется игрой в свой момент, поэтому в момент
+            // нашего чтения оно может хранить ещё вчерашнее значение: приложение
+            // один раз уже показало торговку в понедельник.
+            flag = forest.travelingMerchantDay;
+            present = forest.ShouldTravelingMerchantVisitToday();
             if (!present)
                 return result;
 
@@ -114,7 +120,7 @@ namespace StardewHelperBridge
             return result;
         }
 
-        private string BuildJson(string reason, bool present, List<(string Name, int Price, int Stock)> items)
+        private string BuildJson(string reason, bool present, bool flag, List<(string Name, int Price, int Stock)> items)
         {
             var sb = new StringBuilder();
             sb.Append('{');
@@ -126,6 +132,9 @@ namespace StardewHelperBridge
             sb.Append($"\"year\":{Game1.year},");
             sb.Append($"\"weather\":{Json.Quote(Game1.isRaining ? "rain" : "sun")},");
             sb.Append($"\"cartPresent\":{(present ? "true" : "false")},");
+            // кэшированное поле игры рядом с вычисленным: если они разойдутся,
+            // это станет видно прямо в файле, а не останется невидимым
+            sb.Append($"\"cartFlag\":{(flag ? "true" : "false")},");
             sb.Append("\"cart\":[");
             for (int i = 0; i < items.Count; i++)
             {

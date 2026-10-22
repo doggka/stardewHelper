@@ -159,8 +159,9 @@ export const suggHTML = (list: string[]): string =>
 export function filterBarHTML(): string {
   if (S.tab === 'plan') return '';
   if (S.q) {
-    return '<div class="fbar searching"><span class="pill">Поиск: ' + esc(S.q)
-      + ' <button type="button" data-act="clearSearch" aria-label="Сбросить поиск">✕</button></span>'
+    // без крестика: он тут был третьим способом очистить поиск, а сама
+    // плашка стоит прямо под полем, где запрос и так виден
+    return '<div class="fbar searching"><span class="pill">Поиск: ' + esc(S.q) + '</span>'
       + '<span class="sb-meta">фильтры отключены, пока идёт поиск</span></div>';
   }
   if (!S.locFilter || !LOC[S.locFilter]) return '';

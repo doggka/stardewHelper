@@ -56,8 +56,25 @@ const isFish = (it: Item): boolean => it.bundle.room.id === 'fishtank';
 
 /** Последнее, что отдал мод-мостик. Обновляется при возврате фокуса в окно. */
 let bridgeState: BridgeState | null = null;
+
+/**
+ * Игровой день, погоду которого мы уже перенесли из игры.
+ *
+ * Нужен, чтобы не затирать ручной выбор ☀/☔ на каждом обновлении: кнопки
+ * остаются для «а что если», и переключённое руками должно держаться до
+ * конца дня. А вот новый день приносит новую погоду, и вот тогда забираем.
+ */
+let weatherDay = '';
+
 export function setBridgeState(s: BridgeState | null): void {
   bridgeState = s;
+  if (!s) return;
+  const key = s.year + '|' + s.season + '|' + s.day;
+  const sameDate = s.day === S.day && s.season === SEASON_KEY[S.season];
+  if (key !== weatherDay && sameDate) {
+    weatherDay = key;
+    if (s.weather === 'sun' || s.weather === 'rain') S.weather = s.weather;
+  }
 }
 
 /**
@@ -67,12 +84,24 @@ export function setBridgeState(s: BridgeState | null): void {
  */
 function cartRow(today: string | null, nx: number | null): string {
   const b = bridgeState;
-  const live = b && b.cartPresent && b.day === S.day && b.season === SEASON_KEY[S.season];
+  // год тоже сравниваем: без него 1 осени 1-го года совпало бы со 2-м
+  const fresh = !!b && b.day === S.day && b.season === SEASON_KEY[S.season]
+    && (!S.save || b.year === S.save.year);
+  // Календарь — вторая независимая проверка. Мод уже один раз сообщил
+  // о торговке в понедельник; молча выбрать одну из двух версий значит
+  // спрятать ошибку, поэтому при расхождении говорим об этом вслух.
+  const conflict = fresh && !!b!.cartPresent && !today;
+  const live = fresh && b!.cartPresent && !!today;
 
   if (!live) {
     return '<div class="trow"><span class="tico">🛒</span><div>'
       + '<b>' + (today ? 'Торговка здесь' : nx !== null ? 'Торговка через ' + nx + ' дн.' : 'В этом сезоне торговки больше нет') + '</b>'
-      + '<span class="tsub">' + (today ? esc(today) : 'пятница и воскресенье, 06:00–20:00') + '</span>'
+      + '<span class="tsub">'
+      + (conflict
+          ? 'мод сообщил о торговке, но по календарю сегодня '
+            + DOW[dow(S.day)].toLowerCase() + ' — верю календарю'
+          : today ? esc(today) : 'пятница и воскресенье, 06:00–20:00')
+      + '</span>'
       + '</div><button data-act="cartInfo">Что брать</button></div>';
   }
 

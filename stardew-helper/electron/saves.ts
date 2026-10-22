@@ -32,6 +32,21 @@ function tag(xml: string, name: string): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * Погода в долине. Хранится по «контекстам»: у острова и пустыни своя,
+ * нам нужен Default. Рядом лежит weatherForTomorrow — его легко перепутать,
+ * поэтому тег сопоставляется точно.
+ *
+ * Нас интересует только «мокро или нет»: дождём считаются Rain, Storm
+ * и зелёный дождь. Wind — это мусор в воздухе, а Snow в игре дождём
+ * не считается, и рыба на дождь при снеге не ловится.
+ */
+function readWeather(xml: string): 'sun' | 'rain' {
+  const m = /<key><string>Default<\/string><\/key><value><LocationWeather>[\s\S]*?<weather><string>([A-Za-z]*)<\/string><\/weather>/.exec(xml);
+  const w = m ? m[1] : 'Sun';
+  return w === 'Rain' || w === 'Storm' || w === 'GreenRain' ? 'rain' : 'sun';
+}
+
 interface ParsedBundles {
   byKey: Map<number, boolean[]>;
 }
@@ -77,6 +92,7 @@ function readSaveFile(folder: string, root: string): SaveSummary | null {
     return null;
   }
 
+  const weather = readWeather(xml);
   const seasonKey = tag(xml, 'currentSeason') || 'spring';
   const season = Math.max(0, SEASON_KEY.indexOf(seasonKey)) as Season;
   const version = tag(xml, 'gameVersion');
@@ -131,6 +147,7 @@ function readSaveFile(folder: string, root: string): SaveSummary | null {
     playerName: playerMatch ? playerMatch[1] : '—',
     season,
     day: parseInt(tag(xml, 'dayOfMonth') || '1', 10),
+    weather,
     year: parseInt(tag(xml, 'year') || '1', 10),
     gameVersion: version,
     bundlesSupported: !unsupported,

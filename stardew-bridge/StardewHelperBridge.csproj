@@ -11,6 +11,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- apiprobe — отдельная консольная утилита, лежит рядом, но в мод не входит.
+         Без этого её Program.cs подхватывается общим шаблоном **/*.cs и ломает
+         сборку: это программа с инструкциями верхнего уровня. -->
+    <Compile Remove="apiprobe/**" />
+    <None Remove="apiprobe/**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Находит игру и SMAPI, подтягивает ссылки, раскладывает готовый мод -->
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.3.2" />
   </ItemGroup>

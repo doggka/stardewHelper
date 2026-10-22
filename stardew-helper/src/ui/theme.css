@@ -88,7 +88,9 @@ header{position:sticky;top:0;z-index:20;background:var(--bg);
 .playmore{border-radius:0 8px 8px 0;border-left-color:rgba(16,40,16,.35);
   background:var(--now);color:#102810;padding:6px 9px;font-size:11px}
 .playmore:hover{background:#82d982;border-color:#82d982}
-.playwrap .menu{min-width:220px}
+/* Ширина по кнопке, а не числом: 220px были верны ровно до того, как на
+   «Играть» появилась подпись со способом запуска, и меню стало уже кнопки. */
+.playwrap .menu{left:0;right:auto;min-width:100%}
 .menu button small{display:block;color:var(--faint);font-size:11.5px;margin-top:2px}
 .menu button.cur{color:var(--now)}
 .menu button:disabled{opacity:.45;cursor:default}
@@ -117,6 +119,10 @@ header{position:sticky;top:0;z-index:20;background:var(--bg);
 .searchrow input{flex:1;background:none;border:0;padding:9px 0;font-size:14.5px;
   border-radius:0;min-width:0}
 .searchrow input:focus{outline:none}
+/* Chromium рисует свой крестик у type="search" — получалось два подряд.
+   Убираем именно его, а не меняем тип поля: поисковый тип нужен ради
+   очистки по Escape и правильного объявления для скринридера. */
+.searchrow input::-webkit-search-cancel-button{display:none}
 .searchrow button{background:none;border:0;color:var(--dim);padding:4px 6px;font-size:14px}
 .searchrow button:hover{color:var(--ink);background:none}
 
