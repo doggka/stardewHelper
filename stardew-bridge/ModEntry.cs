@@ -72,6 +72,12 @@ namespace StardewHelperBridge
                 string path = Path.Combine(this.Helper.DirectoryPath, CatalogFile);
                 File.WriteAllText(path, Catalog.Build(), new UTF8Encoding(false));
                 this.Monitor.Log("Записал справочник узелков.", LogLevel.Trace);
+
+                // иконки рядом со справочником: приложению нужны картинки для
+                // сетки слотов, а рисовать свои мы не будем
+                string icons = Path.Combine(this.Helper.DirectoryPath, "icons");
+                int n = Icons.Dump(Catalog.ItemIds(), icons);
+                this.Monitor.Log($"Записал иконок: {n}.", LogLevel.Trace);
             }
             catch (Exception ex)
             {

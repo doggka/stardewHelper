@@ -59,3 +59,4 @@ Dump("StardewValley.Farm", "animals", "buildings");
 Dump("FarmAnimal", "friendship", "type", "isBaby", "wasPet");
 Dump("StardewValley.Farmer", "DailyLuck", "dailyLuck", "LuckLevel");
 Dump("FarmerTeam", "Luck");
+Dump("ParsedItemData", "GetTexture", "GetSourceRect", "SpriteIndex");

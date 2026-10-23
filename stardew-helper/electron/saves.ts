@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { ROOMS } from '../src/data/bundles';
 import { SEASON_KEY } from '../src/data/constants';
-import type { SaveSummary, Season } from '../src/types';
+import type { FarmState, SaveSummary, Season } from '../src/types';
 
 /**
  * Чтение сохранений Stardew Valley. Только чтение — в сейв не пишем никогда.
@@ -60,6 +60,44 @@ function readWeather(xml: string): 'sun' | 'rain' {
 function readWeatherTomorrow(xml: string): 'sun' | 'rain' {
   const m = weatherBlock(xml);
   return wet(m ? m[1] : 'Sun');
+}
+
+/**
+ * Постройки и живность. Нужны, чтобы подсказки перестали советовать то,
+ * что уже сделано: «элитный хлев + свинья» при построенном хлеве и
+ * купленной свинье — это шум, который прячет настоящую причину.
+ *
+ * Хлев и курятник игрок строит сам, поэтому запись в списке означает
+ * наличие. С теплицей так нельзя: её развалины лежат на ферме с первого
+ * дня, и там признак — отдельный флаг greenhouseUnlocked.
+ */
+const TIER: Record<string, number> = {
+  Barn: 1, 'Big Barn': 2, 'Deluxe Barn': 3,
+  Coop: 1, 'Big Coop': 2, 'Deluxe Coop': 3,
+};
+
+function readFarm(xml: string): FarmState {
+  let barn = 0, coop = 0;
+  const bre = /<buildingType>([^<]*)<\/buildingType>/g;
+  let m: RegExpExecArray | null;
+  while ((m = bre.exec(xml))) {
+    const t = TIER[m[1]];
+    if (!t) continue;
+    if (m[1].indexOf('Coop') >= 0) coop = Math.max(coop, t);
+    else barn = Math.max(barn, t);
+  }
+
+  // в записи животного дружба идёт перед типом, поэтому берём их парой
+  const animals: { type: string; hearts: number }[] = [];
+  const are = /<friendshipTowardFarmer>(\d+)<\/friendshipTowardFarmer>[\s\S]{0,4000}?<type>([^<]*)<\/type><buildingTypeILiveIn>/g;
+  while ((m = are.exec(xml))) {
+    animals.push({ type: m[2], hearts: parseInt(m[1], 10) });
+  }
+
+  return {
+    barn, coop, animals,
+    greenhouse: /<greenhouseUnlocked>true<\/greenhouseUnlocked>/.test(xml),
+  };
 }
 
 interface ParsedBundles {
@@ -168,6 +206,7 @@ function readSaveFile(folder: string, root: string): SaveSummary | null {
     weather,
     weatherTomorrow,
     luck,
+    farm: readFarm(xml),
     year: parseInt(tag(xml, 'year') || '1', 10),
     gameVersion: version,
     bundlesSupported: !unsupported,

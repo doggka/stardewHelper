@@ -119,6 +119,36 @@ export function readBridge(game: GameInfo): unknown {
   }
 }
 
+/**
+ * Иконки предметов, выгруженные модом. Отдаём сразу data-URL: картинки
+ * по 16×16, все вместе весят десятки килобайт, и так их не надо раздавать
+ * через протокол или копировать к себе.
+ *
+ * Нет мода или нет папки — пустой объект. Приложение обязано работать без
+ * иконок: это улучшение, а не условие.
+ */
+export function readIcons(game: GameInfo): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!game.path) return out;
+  const dir = path.join(game.path, 'Mods', 'StardewHelperBridge', 'icons');
+  let names: string[];
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return out;
+  }
+  for (const n of names) {
+    if (!n.endsWith('.png')) continue;
+    try {
+      const b64 = fs.readFileSync(path.join(dir, n)).toString('base64');
+      out[n.slice(0, -4)] = 'data:image/png;base64,' + b64;
+    } catch {
+      // пропущенная картинка — это просто слот без картинки
+    }
+  }
+  return out;
+}
+
 export function listMods(game: GameInfo): ModInfo[] {
   const out: ModInfo[] = [];
   for (const m of MODS) {

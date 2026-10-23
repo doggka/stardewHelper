@@ -34,6 +34,7 @@ const api = {
     bootstrapInConsole: (): Promise<unknown> => ipcRenderer.invoke('game:bootstrapInConsole'),
     launch: (mode: string): Promise<unknown> => ipcRenderer.invoke('game:launch', mode),
     bridge: (): Promise<unknown> => ipcRenderer.invoke('game:bridge'),
+    icons: (): Promise<Record<string, string>> => ipcRenderer.invoke('game:icons'),
     dropDir: (): Promise<string> => ipcRenderer.invoke('game:dropDir'),
     openDropDir: (): Promise<string> => ipcRenderer.invoke('game:openDropDir'),
     onLine: (cb: (line: string, isErr: boolean) => void) => {

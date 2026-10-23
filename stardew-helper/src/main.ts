@@ -6,6 +6,7 @@ import { esc, filterBarHTML, openLoc } from './ui/html';
 import { clearRecent, markRecent, renderTrackerBody } from './screens/tracker';
 import { setBridgeState } from './screens/today';
 import { setBelongings } from './logic/have';
+import { setIcons } from './logic/icons';
 import { bridge, isDesktop, openExternal } from './bridge';
 
 const shell = document.getElementById('shell') as HTMLElement;
@@ -267,7 +268,7 @@ document.addEventListener('change', (e) => {
  * свёрнутый узелок разворачивался только при клике в зазор между словами.
  */
 const CLICKABLE = ['win', 'ext', 'f', 'locfilter', 'sugg', 'loc', 'src', 'w',
-  'fold', 'today', 't', 'act'].map((a) => '[data-' + a + ']').join(',');
+  'fold', 'room', 'today', 't', 'act'].map((a) => '[data-' + a + ']').join(',');
 
 document.addEventListener('click', (e) => {
   const el = e.target as HTMLElement;
@@ -309,6 +310,12 @@ document.addEventListener('click', (e) => {
     const i = S.openBundles.indexOf(d.fold);
     if (i >= 0) S.openBundles.splice(i, 1);
     else S.openBundles.push(d.fold);
+    save(); render(); return;
+  }
+  if (d.room) {
+    const i = S.openRooms.indexOf(d.room);
+    if (i >= 0) S.openRooms.splice(i, 1);
+    else S.openRooms.push(d.room);
     save(); render(); return;
   }
   // строка блока «Сегодня» раскрывается на месте: ни фильтров, ни перехода
@@ -544,4 +551,10 @@ if (bridge) {
     render();
   });
   if (S.save) void refreshBelongings(S.save.id);
+  // иконки читаются один раз: они меняются только при обновлении игры
+  void bridge.game.icons().then((map) => {
+    if (!map || !Object.keys(map).length) return;
+    setIcons(map);
+    render();
+  });
 }

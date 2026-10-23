@@ -53,6 +53,26 @@ namespace StardewHelperBridge
             return sb.ToString();
         }
 
+        /// <summary>Все id предметов из узелков — для выгрузки иконок.</summary>
+        public static IEnumerable<string> ItemIds()
+        {
+            var seen = new HashSet<string>();
+            var data = Game1.netWorldState?.Value?.BundleData;
+            if (data == null)
+                yield break;
+
+            foreach (var pair in data)
+            {
+                var parts = pair.Value.Split('/');
+                var items = Field(parts, 2).Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                for (int i = 0; i + 2 < items.Length; i += 3)
+                {
+                    if (seen.Add(items[i]))
+                        yield return items[i];
+                }
+            }
+        }
+
         private static void AppendBundle(StringBuilder sb, string key, string raw)
         {
             // ключ — "Комната/номер", значение — поля через «/»

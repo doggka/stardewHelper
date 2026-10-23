@@ -45,7 +45,29 @@ export function renderRooms(): string {
     const bs = r.bundles.filter(matchBundle);
     if (!bs.length) return;
     const ok = r.bundles.filter((b) => bprog(b).ok).length;
-    h += '<div class="panel"><h2 class="room">' + esc(r.name)
+
+    // Закрытая комната сворачивается в одну строку: шесть свёрнутых
+    // карточек занимали целый экран, а смотреть на них незачем.
+    // Во время поиска и под фильтром не сворачиваем — иначе найденное
+    // окажется спрятано.
+    const foldable = ok === r.bundles.length && !S.q && !filterActive();
+    if (foldable && S.openRooms.indexOf(r.id) < 0) {
+      h += '<div class="panel rfolded">'
+        + '<button class="rfold" data-room="' + r.id + '" aria-expanded="false"'
+        + ' aria-label="Развернуть: ' + esc(r.name) + '">'
+        + '<span class="bf-ok">✓</span>'
+        + '<span class="bf-name">' + esc(r.name) + '</span>'
+        + '<span class="b g">' + ok + '/' + r.bundles.length + '</span>'
+        + '</button></div>';
+      return;
+    }
+
+    h += '<div class="panel"><h2 class="room">'
+      + (foldable
+          ? '<button class="rfold open" data-room="' + r.id + '" aria-expanded="true"'
+            + ' aria-label="Свернуть: ' + esc(r.name) + '">×</button>'
+          : '')
+      + esc(r.name)
       + ' <span>' + ok + '/' + r.bundles.length + ' · ' + esc(r.open) + ' · награда: ' + esc(r.reward) + '</span></h2>'
       + (r.caution ? '<p class="note">⚠ ' + r.caution + '</p>' : '')
       + '<div class="grid">' + bs.map(bundleHTML).join('') + '</div></div>';

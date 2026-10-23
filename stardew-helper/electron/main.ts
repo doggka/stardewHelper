@@ -4,7 +4,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { DEFAULT_ROOT, listSaves, readSaveById } from './saves';
 import { readBelongings } from './belongings';
-import { detectGame, listMods, readBridge } from './game';
+import { detectGame, listMods, readBridge, readIcons } from './game';
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
 const ROOT = path.join(__dirname, '..');
@@ -145,6 +145,7 @@ function registerIpc() {
 
   ipcMain.handle('game:launch', (_e, mode: string) => launchGame(mode));
   ipcMain.handle('game:bridge', () => readBridge(detectGame()));
+  ipcMain.handle('game:icons', () => readIcons(detectGame()));
 
   ipcMain.handle('game:dropDir', () => dropDir());
   ipcMain.handle('game:openDropDir', () => {

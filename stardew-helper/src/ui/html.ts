@@ -5,6 +5,8 @@ import { ALL, S, progress } from '../state';
 import { bprog, cartInfo, done, effLoc, hasLoc, st } from '../logic/status';
 import { visible } from '../logic/filters';
 import { enough, have, haveText } from '../logic/have';
+import { needHint } from '../logic/farm';
+import { iconFor } from '../logic/icons';
 
 export const esc = (s: unknown): string =>
   String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
@@ -75,7 +77,15 @@ export function itemHTML(it: Item, opts: ItemOpts = {}): string {
     bd += '<span class="b last">⏳ последний сезон' + (ci.price ? ' · дальше торговка' : '') + '</span>';
   }
   bd += locChips(it);
-  s.cond.forEach((c) => (bd += '<span class="b g">' + esc(c) + '</span>'));
+  // Цепочку «постройка → животное → сердечки» показываем по состоянию фермы:
+  // первый невыполненный шаг вместо всего списка. Если фермы мы не знаем,
+  // остаётся прежний текст из данных.
+  const nh = d ? null : needHint(it);
+  s.cond.forEach((c) => {
+    if (nh && c === it.c) return;
+    bd += '<span class="b g">' + esc(c) + '</span>';
+  });
+  if (nh) bd += '<span class="b farm">🐄 ' + esc(nh) + '</span>';
   if (it.tree && !d) bd += '<span class="b g">дерево растёт 28 дней</span>';
 
   return '<div class="item' + (d ? ' ok' : '') + (open ? ' open' : '')
@@ -129,10 +139,49 @@ export function bundleHTML(b: Bundle): string {
     + SEASON_RU[b.earliest].toLowerCase() + ', 1-й год</div>'
     + '<div class="bar" style="margin-bottom:6px"><i style="width:' + (p.c / p.n * 100) + '%"></i></div>';
   if (b.note) h += '<p class="note">' + b.note + '</p>';
-  h += '<ul class="items">' + vis.map((i) => '<li>' + itemHTML(i) + '</li>').join('') + '</ul>'
+  h += slotsHTML(b, vis)
+    + '<ul class="items">' + vis.filter(isOpen).map((i) => '<li>' + itemHTML(i) + '</li>').join('') + '</ul>'
     + (vis.length < (b.items || []).length ? '<p class="note" style="margin:6px 0 0">скрыто фильтром: ' + ((b.items || []).length - vis.length) + '</p>' : '')
     + '</div>';
   return h;
+}
+
+const isOpen = (it: Item): boolean => S.openSrc.indexOf(it.id) >= 0;
+
+/**
+ * Узелок как в игре: сетка слотов вместо длинного столбца строк.
+ *
+ * Зачем: карточка с двенадцатью предметами растягивала ряд, соседние
+ * оставались низкими, и в сетке зияли дыры. Плитки одинаковой высоты
+ * этого не делают, а узелок к тому же так и выглядит в самой игре.
+ *
+ * Подробности не теряются: клик по плитке раскрывает ту же строку, что
+ * была раньше, со всеми бейджами, подсказками и ссылкой на вики.
+ * Галочка живёт в раскрытой строке — чтобы случайный клик по плитке
+ * не отмечал предмет сданным.
+ */
+function slotsHTML(b: Bundle, vis: Item[]): string {
+  if (!vis.length) return '';
+  return '<div class="slots" role="list">'
+    + vis.map((it) => {
+      const d = done(it), s = st(it), open = isOpen(it);
+      const ic = iconFor(it);
+      const hint = d ? '' : ' ' + (have(it) ? 'slot-got' : pickHint(s).replace(/hint-/g, 'slot-'));
+      return '<button type="button" role="listitem" class="slot'
+        + (d ? ' done' : '') + (open ? ' open' : '') + hint + '"'
+        + ' data-src="' + it.id + '" aria-expanded="' + open + '"'
+        + ' aria-label="' + esc(it.n) + (it.q ? ', ' + it.q + ' шт.' : '')
+        + (d ? ', сдано' : '') + '">'
+        + (ic
+            ? '<img class="slot-img" src="' + ic + '" alt="" width="32" height="32">'
+            : '<span class="slot-noimg" aria-hidden="true">' + esc(it.n.slice(0, 2)) + '</span>')
+        + '<span class="slot-n">' + esc(it.n) + '</span>'
+        + (it.q ? '<span class="slot-q">×' + it.q + '</span>' : '')
+        + (it.gold ? '<span class="slot-g" title="золотое качество">★</span>' : '')
+        + (d ? '<span class="slot-ok">✓</span>' : '')
+        + '</button>';
+    }).join('')
+    + '</div>';
 }
 
 export function vaultHTML(r: Room): string {

@@ -26,6 +26,7 @@ export interface Bridge {
     bootstrapInConsole(): Promise<{ started: boolean; error?: string }>;
     launch(mode: string): Promise<{ ok: boolean; error?: string; cmd?: string }>;
     bridge(): Promise<BridgeState | null>;
+    icons(): Promise<Record<string, string>>;
     dropDir(): Promise<string>;
     openDropDir(): Promise<string>;
     onLine(cb: (line: string, isErr: boolean) => void): void;
@@ -51,6 +52,7 @@ if (import.meta.env.DEV && location.search.includes('mock') && !window.sdv) {
     id, folder: farmName, file: '', root: 'MOCK',
     farmName, playerName, season, day, year, gameVersion,
     weather: 'sun', weatherTomorrow: 'rain', luck: 0.08,
+    farm: { barn: 3, coop: 2, greenhouse: false, animals: [{ type: 'Pig', hearts: 900 }] },
     bundlesSupported: true, skipped, donatedCount: 0, completedBundles,
     progress: {}, vault: {},
   });
@@ -92,6 +94,8 @@ if (import.meta.env.DEV && location.search.includes('mock') && !window.sdv) {
       cancelBootstrap: async () => false,
       bootstrapInConsole: async () => ({ started: false, error: 'заглушка' }),
       launch: async (m) => ({ ok: true, cmd: 'mock:' + m }),
+      // в браузерной заглушке иконок нет — ровно как без мода
+      icons: async () => ({}),
       bridge: async () => ({
         saveId: '452028593', day: 11, season: 'spring', year: 1, weather: 'sun',
         cartPresent: true,
