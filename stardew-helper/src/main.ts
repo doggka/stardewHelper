@@ -14,6 +14,12 @@ const shell = document.getElementById('shell') as HTMLElement;
 /** Меню «⋯» и выбор способа запуска. Не в состоянии: открытость
  *  не должна переживать перезапуск. */
 let menuOpen = false;
+/**
+ * Вкладка, с которой ушли в справочник. В состояние не сохраняем: это
+ * про текущий заход, а не про настройку. После перезапуска вернёт
+ * в комнаты, и это не хуже любого другого выбора.
+ */
+let backTab = 'rooms';
 let playOpen = false;
 
 /** Что нашлось в системе. Спрашиваем один раз при старте, не на каждый рендер. */
@@ -169,7 +175,10 @@ function trackerChrome(): string {
     + (S.tab === 'rooms' || S.q
         ? '<div id="filters">' + filterBarHTML() + '</div>'
         : S.tab === 'day' ? ''
-        : '<button class="backlink" data-t="rooms">← К комнатам</button>')
+        // Справочники открываются из меню с любой вкладки, поэтому
+        // возвращаемся туда, откуда пришли, а не всегда в комнаты.
+        : '<button class="backlink" data-t="' + backTab + '">← Назад'
+          + (backTab === 'day' ? ', к сегодняшнему дню' : ', к комнатам') + '</button>')
     + '<div id="view" tabindex="-1">' + renderTrackerBody() + '</div></main>'
     + '<div class="foot">Данные с ru.stardewvalleywiki.com · обычный набор узелков '
     + '(не «перемешанные узелки» из настроек фермы) · прогресс хранится локально</div>';
@@ -326,6 +335,8 @@ document.addEventListener('click', (e) => {
     save(); render(); return;
   }
   if (d.t) {
+    // откуда ушли в справочник — туда и вернёт кнопка «Назад»
+    if (d.t === 'plan' || d.t === 'cart') backTab = S.tab === 'day' ? 'day' : 'rooms';
     S.tab = d.t; menuOpen = false; clearRecent();
     save(); render(); shell.scrollTop = 0; return;
   }

@@ -32,6 +32,29 @@ export function farmState(): FarmState | null {
  * Что сказать про предмет с цепочкой. null — цепочки нет либо состояние
  * фермы неизвестно, и тогда остаётся прежний текст из данных.
  */
+/**
+ * Цепочка собрана целиком: постройка есть, животное есть, сердечек хватает.
+ * Пока не собрана — показываем советы про подготовку; когда собрана, они
+ * только мешают.
+ *
+ * Про ферму ничего не знаем — считаем, что не собрана: совет лишним быть
+ * не перестанет, а вот промолчать там, где надо копить деньги, хуже.
+ */
+export function needDone(it: Item): boolean {
+  const need = it.need;
+  const f = farmState();
+  if (!need) return true;
+  if (!f) return false;
+  if (need.barn && f.barn < need.barn) return false;
+  if (need.coop && f.coop < need.coop) return false;
+  if (need.animal) {
+    const mine = f.animals.filter((a) => need.animal!.indexOf(a.type) >= 0);
+    if (!mine.length) return false;
+    if (need.hearts && !mine.some((a) => a.hearts >= HEARTS_OK)) return false;
+  }
+  return true;
+}
+
 export function needHint(it: Item): string | null {
   const need = it.need;
   const f = farmState();

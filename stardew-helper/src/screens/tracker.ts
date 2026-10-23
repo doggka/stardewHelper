@@ -62,15 +62,26 @@ export function renderRooms(): string {
       return;
     }
 
+    // Закрытые узелки уходят в конец: свёрнутая карточка занимает строку,
+    // открытая — половину экрана, и вперемешку они рвут сетку дырами.
+    // Внутри групп порядок прежний, он осмысленный — по сезонам.
+    const sorted = bs.slice().sort((a, c) =>
+      (bprog(a).ok ? 1 : 0) - (bprog(c).ok ? 1 : 0));
+
+    // Заголовок сам по себе кнопка: крестик справа читался как «закрыть»,
+    // а не «свернуть», и целиться в него надо было через весь экран.
+    const head = esc(r.name)
+      + ' <span>' + ok + '/' + r.bundles.length + ' · ' + esc(r.open)
+      + ' · награда: ' + esc(r.reward) + '</span>';
     h += '<div class="panel"><h2 class="room">'
       + (foldable
-          ? '<button class="rfold open" data-room="' + r.id + '" aria-expanded="true"'
-            + ' aria-label="Свернуть: ' + esc(r.name) + '">×</button>'
-          : '')
-      + esc(r.name)
-      + ' <span>' + ok + '/' + r.bundles.length + ' · ' + esc(r.open) + ' · награда: ' + esc(r.reward) + '</span></h2>'
+          ? '<button class="rhead" data-room="' + r.id + '" aria-expanded="true"'
+            + ' aria-label="Свернуть: ' + esc(r.name) + '">' + head
+            + '<span class="chev" aria-hidden="true">▲</span></button>'
+          : head)
+      + '</h2>'
       + (r.caution ? '<p class="note">⚠ ' + r.caution + '</p>' : '')
-      + '<div class="grid">' + bs.map(bundleHTML).join('') + '</div></div>';
+      + '<div class="grid">' + sorted.map(bundleHTML).join('') + '</div></div>';
   });
   if (h) return h;
   return '<p class="empty">' + (filterActive()
@@ -114,7 +125,10 @@ export function renderCart(): string {
     + '<p style="font-size:13px;margin:0 0 8px">'
     + '<b>Пятница и воскресенье, 06:00–20:00</b> — '
     + '<button type="button" class="b loc" data-loc="cart">📍 Повозка торговки</button> в Пепельносмольном лесу, к югу от фермы.<br>'
-    + 'Плюс <b>каждый день</b>: Ночной рынок 15–17 зимы (17:00–02:00) и Пустынный фестиваль 15–17 весны (12:00–02:00).</p>'
+    // «Плюс каждый день» читалось как «каждый день вообще». На самом деле
+    // это исключения: в эти три дня она работает подряд, а не по графику.
+    + 'Исключения — в эти дни она на месте <b>все три дня подряд</b>, а не только в пятницу и воскресенье: '
+    + 'Ночной рынок 15–17 зимы (17:00–02:00) и Пустынный фестиваль 15–17 весны (12:00–02:00).</p>'
     + '<p style="font-size:13px;margin:0 0 8px">Ассортимент — 10 случайных предметов по 1–5 шт, цены каждый раз разные. '
     + 'Товары всегда <b>обычного качества</b>.</p>'
     + '<div class="gatebox">' + (today

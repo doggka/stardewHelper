@@ -5,7 +5,7 @@ import { ALL, S, progress } from '../state';
 import { bprog, cartInfo, done, effLoc, hasLoc, st } from '../logic/status';
 import { visible } from '../logic/filters';
 import { enough, have, haveText } from '../logic/have';
-import { needHint } from '../logic/farm';
+import { needDone, needHint } from '../logic/farm';
 import { iconFor } from '../logic/icons';
 
 export const esc = (s: unknown): string =>
@@ -107,8 +107,33 @@ export function itemHTML(it: Item, opts: ItemOpts = {}): string {
     + '<div class="src">' + esc(it.src || '')
     + '<br><a href="' + wikiUrl(it.n) + '" target="_blank" rel="noopener"'
     + ' aria-label="' + esc(it.n) + ' — статья на вики">статья на вики ↗</a></div>'
-    + (it.warn && !d ? '<div class="warn">⚠ ' + it.warn + '</div>' : '')
+    // warnSetup нужен, только пока цепочка не собрана: «начинай копить
+    // с весны» бессмысленно, когда хлев построен и свинья куплена
+    + (!d && (it.warn || (it.warnSetup && !needDone(it)))
+        ? '<div class="warn">⚠ ' + [it.warn, needDone(it) ? '' : it.warnSetup]
+            .filter(Boolean).join(' ') + '</div>'
+        : '')
     + '</div></div>';
+}
+
+/**
+ * Заметка узелка списком, а не сплошным текстом.
+ *
+ * «Любые 3 из 4, золотое качество. У торговки не купишь — она продаёт
+ * только обычное. Бери удобрение и качай фермерство заранее.» — это три
+ * разные мысли подряд: правило узелка, предупреждение и совет на будущее.
+ * Подряд они читаются как одна длинная.
+ *
+ * Режем по точке, но только снаружи разметки: в заметках есть <b>, и
+ * точка внутри тега разорвала бы его.
+ */
+function noteHTML(note?: string): string {
+  if (!note) return '';
+  const parts = note.split(/(?<=\.)\s+(?=[А-ЯA-Z«])/).filter((s) => s.trim());
+  if (parts.length < 2) return '<p class="note">' + note + '</p>';
+  return '<ul class="note notelist">'
+    + parts.map((s) => '<li>' + s.trim().replace(/\.$/, '') + '</li>').join('')
+    + '</ul>';
 }
 
 export function bundleHTML(b: Bundle): string {
@@ -129,16 +154,23 @@ export function bundleHTML(b: Bundle): string {
       + '</button></div>';
   }
 
-  let h = '<div class="bundle' + (p.ok ? ' done' : '') + '">'
-    + (p.ok ? '<button class="bfold open" data-fold="' + b.id + '"'
-      + ' aria-expanded="true" aria-label="Свернуть: ' + esc(b.name) + '">×</button>' : '')
-    + '<h3>' + (p.ok ? '✓ ' : '') + esc(b.name)
+  // Заголовок закрытого узелка — кнопка на всю ширину, как у комнаты.
+  const head = (p.ok ? '✓ ' : '') + esc(b.name)
+    + '<span class="b g">' + p.c + '/' + p.n
+    + (b.items && b.items.length > b.slots ? ' (из ' + b.items.length + ')' : '') + '</span>';
 
-    + '<span class="b g">' + p.c + '/' + p.n + (b.items && b.items.length > b.slots ? ' (из ' + b.items.length + ')' : '') + '</span></h3>'
+  let h = '<div class="bundle' + (p.ok ? ' done' : '') + '">'
+    + '<h3>'
+    + (p.ok
+        ? '<button class="bhead" data-fold="' + b.id + '" aria-expanded="true"'
+          + ' aria-label="Свернуть: ' + esc(b.name) + '">' + head
+          + '<span class="chev" aria-hidden="true">▲</span></button>'
+        : head)
+    + '</h3>'
     + '<div class="meta">Награда: ' + esc(b.reward) + ' · реально закрыть: '
     + SEASON_RU[b.earliest].toLowerCase() + ', 1-й год</div>'
     + '<div class="bar" style="margin-bottom:6px"><i style="width:' + (p.c / p.n * 100) + '%"></i></div>';
-  if (b.note) h += '<p class="note">' + b.note + '</p>';
+  h += noteHTML(b.note);
   h += slotsHTML(b, vis)
     + '<ul class="items">' + vis.filter(isOpen).map((i) => '<li>' + itemHTML(i) + '</li>').join('') + '</ul>'
     + (vis.length < (b.items || []).length ? '<p class="note" style="margin:6px 0 0">скрыто фильтром: ' + ((b.items || []).length - vis.length) + '</p>' : '')
@@ -166,15 +198,25 @@ function slotsHTML(b: Bundle, vis: Item[]): string {
     + vis.map((it) => {
       const d = done(it), s = st(it), open = isOpen(it);
       const ic = iconFor(it);
-      const hint = d ? '' : ' ' + (have(it) ? 'slot-got' : pickHint(s).replace(/hint-/g, 'slot-'));
+      // «Уже есть» и «растёт» — разные состояния, и красить их одинаково
+      // нельзя: растущую тыкву это делало серой, и зелёная подсветка
+      // «можно взять сейчас» до неё не доходила.
+      const hv = d ? null : have(it);
+      const hint = d ? ''
+        : hv && enough(it, hv) ? ' slot-got'
+        : hv && hv.growing !== undefined ? ' slot-grow'
+        : ' ' + pickHint(s).replace(/hint-/g, 'slot-');
       return '<button type="button" role="listitem" class="slot'
         + (d ? ' done' : '') + (open ? ' open' : '') + hint + '"'
         + ' data-src="' + it.id + '" aria-expanded="' + open + '"'
         + ' aria-label="' + esc(it.n) + (it.q ? ', ' + it.q + ' шт.' : '')
         + (d ? ', сдано' : '') + '">'
+        // Без иконки показывали две первые буквы — «ПА», «ДЫ» не
+        // опознаются вообще. Пустая рамка честнее: она не притворяется
+        // значком, а название под ней и так есть.
         + (ic
             ? '<img class="slot-img" src="' + ic + '" alt="" width="32" height="32">'
-            : '<span class="slot-noimg" aria-hidden="true">' + esc(it.n.slice(0, 2)) + '</span>')
+            : '<span class="slot-noimg" aria-hidden="true"></span>')
         + '<span class="slot-n">' + esc(it.n) + '</span>'
         + (it.q ? '<span class="slot-q">×' + it.q + '</span>' : '')
         + (it.gold ? '<span class="slot-g" title="золотое качество">★</span>' : '')

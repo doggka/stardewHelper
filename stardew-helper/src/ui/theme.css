@@ -238,9 +238,15 @@ button.b{font:inherit;font-size:12px;line-height:inherit;cursor:pointer}
   background:var(--card);border:0;border-radius:12px;padding:15px 20px;font-size:16px}
 .rfold:hover{background:var(--card2);border:0}
 .rfold .bf-name{font-weight:650;color:var(--ink)}
-.room .rfold.open{width:auto;float:right;background:none;padding:2px 8px;
-  font-size:13px;color:var(--faint);border:0;margin:-2px -8px 0 0}
-.room .rfold.open:hover{background:var(--card2);color:var(--ink)}
+/* Заголовок как кнопка: крестик справа читался как «закрыть», а не
+   «свернуть», и целиться в него надо было через весь экран. */
+.rhead,.bhead{width:100%;display:flex;align-items:baseline;gap:9px;
+  background:none;border:0;padding:0;text-align:left;color:inherit;
+  font:inherit;border-radius:7px}
+.rhead:hover,.bhead:hover{background:none;color:var(--acc)}
+.rhead .chev,.bhead .chev{margin-left:auto;color:var(--faint);font-size:11px;
+  flex:0 0 auto;align-self:center}
+.rhead:hover .chev,.bhead:hover .chev{color:var(--acc)}
 
 /* ---------- свёрнутый закрытый узелок ---------- */
 .bundle.folded{padding:0;background:none}
@@ -249,10 +255,9 @@ button.b{font:inherit;font-size:12px;line-height:inherit;cursor:pointer}
 .bfold:hover{background:var(--card2);border:0}
 .bf-ok{color:var(--now);font-weight:700}
 .bf-name{flex:1;min-width:0;font-weight:600;color:var(--dim)}
-.bf-more{color:var(--faint);font-size:12px}
-.bundle .bfold.open{width:auto;float:right;background:none;padding:2px 8px;
-  font-size:12px;color:var(--faint);margin:-4px -8px 0 0}
-.bundle .bfold.open:hover{background:var(--card2)}
+/* .bf-more и .bfold.open убраны вместе с подписью «развернуть» и крестиком:
+   свёрнутая карточка кликабельна целиком, развёрнутая сворачивается
+   заголовком. */
 
 /* ---------- «ещё нашлось» под карточкой поиска ---------- */
 .morefound{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:-8px 0 22px}
@@ -264,6 +269,10 @@ button.b{font:inherit;font-size:12px;line-height:inherit;cursor:pointer}
 .panel h2{margin:0 0 3px;font-size:17px;font-weight:650;color:var(--ink)}
 .panel h2 em{font-style:normal;font-size:13px;color:var(--dim);font-weight:400}
 .note{color:var(--dim);font-size:13px;margin:6px 0 0}
+/* заметка узелка списком: подряд три разные мысли читались как одна длинная */
+ul.notelist{list-style:none;padding:0;display:flex;flex-direction:column;gap:4px}
+ul.notelist li{padding-left:14px;position:relative;line-height:1.45}
+ul.notelist li::before{content:'·';position:absolute;left:4px;color:var(--faint)}
 .room{margin:0 0 3px;font-size:17px;font-weight:650;color:var(--ink);display:block}
 .room span{display:block;font-size:13px;color:var(--dim);font-weight:400;margin-top:2px}
 .empty{color:var(--dim);font-size:14px;padding:14px 0}
@@ -290,21 +299,32 @@ button.b{font:inherit;font-size:12px;line-height:inherit;cursor:pointer}
 .slot.open{background:var(--card2);border-color:var(--acc);
   border-left-color:var(--acc)}
 .slot-img{image-rendering:pixelated;width:32px;height:32px;flex:0 0 auto}
-.slot-noimg{width:32px;height:32px;display:flex;align-items:center;
-  justify-content:center;border-radius:7px;background:var(--card);
-  color:var(--faint);font-size:13px;font-weight:600;text-transform:uppercase}
+/* пустая рамка вместо двух первых букв: «ПА» и «ДЫ» не опознавались */
+.slot-noimg{width:32px;height:32px;border-radius:7px;
+  border:1px dashed var(--line2);opacity:.6}
+/* без иконки места под текст больше — показываем название целиком */
 .slot-n{font-size:11px;line-height:1.25;text-align:center;color:var(--dim);
-  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 .slot-q{position:absolute;right:5px;bottom:4px;font-size:10.5px;color:var(--acc)}
 .slot-g{position:absolute;left:5px;top:4px;font-size:10.5px;color:var(--acc)}
 .slot-ok{position:absolute;right:5px;top:3px;font-size:11px;color:var(--now)}
 .slot.done{opacity:.4}
 .slot.done .slot-n{text-decoration:line-through}
-/* те же три состояния, что у строк: можно сейчас, окно по времени, уже есть */
-.slot.slot-now{border-left-color:var(--now)}
-.slot.slot-window{border-left-color:var(--cond);background:#2c2820}
-.slot.slot-got{border-left-color:var(--faint);opacity:.75}
-.slot.slot-last{box-shadow:inset 0 0 0 1px rgba(240,145,74,.3)}
+/* Состояния плитки. На строке списка хватало полоски в три пикселя,
+   на квадрате 74×74 она теряется — поэтому красим рамку целиком и даём
+   фон. Это единственный сигнал «иди бери», он должен быть виден сразу. */
+.slot.slot-now{border-color:rgba(111,207,111,.55);border-left-color:var(--now);
+  background:#1e2a1e}
+.slot.slot-now .slot-n{color:#bfe3bf}
+.slot.slot-window{border-color:rgba(224,184,74,.5);border-left-color:var(--cond);
+  background:#2c2820}
+.slot.slot-window .slot-n{color:#e0cf9a}
+/* уже лежит дома — идти никуда не надо */
+.slot.slot-got{border-left-color:var(--faint);opacity:.7}
+/* растёт на грядке: не «есть», но и ходить за ним незачем */
+.slot.slot-grow{border-color:rgba(106,168,232,.4);border-left-color:var(--later)}
+.slot.slot-grow .slot-n{color:#a9c6e6}
+.slot.slot-last{box-shadow:inset 0 0 0 2px rgba(240,145,74,.45)}
 
 ul.items{list-style:none;margin:10px 0 0;padding:0}
 ul.items li{border-bottom:1px solid var(--line)}
