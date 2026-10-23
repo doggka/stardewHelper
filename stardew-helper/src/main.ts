@@ -1,4 +1,5 @@
 import './ui/theme.css';
+import type { SaveSummary } from './types';
 import { DOW, SEASON_RU } from './data/constants';
 import { S, load, progress, sanitize, save } from './state';
 import { cartToday, dow, nextCart, setDone, totals } from './logic/status';
@@ -492,6 +493,23 @@ async function refreshBelongings(id: string): Promise<void> {
 }
 
 /**
+ * Снимок сейва лежит в localStorage и мог быть записан старой версией
+ * приложения, которая ещё не умела читать нужные поля.
+ *
+ * Так и вышло с состоянием фермы: `farm` появился позже, в сохранённом
+ * снимке его не было, подсказки про хлев и свинью не менялись, и спасала
+ * только кнопка «Обновить из сейва» — о которой из интерфейса никак не
+ * догадаться.
+ *
+ * Сравнение прогресса и даты на фокусе такое поймать не может: оно
+ * следит за тем, что изменилось в игре, а здесь изменилось само
+ * приложение.
+ */
+function staleShape(s: SaveSummary): boolean {
+  return !s.farm || s.weatherTomorrow === undefined || s.luck === undefined;
+}
+
+/**
  * Вернулся из игры — перечитываем сейв. Иначе прогресс на экране старый,
  * и надо вспоминать про кнопку «Обновить из сейва».
  */
@@ -520,7 +538,7 @@ function watchFocus(): void {
       if (!fresh || !fresh.bundlesSupported) return;
       const before = JSON.stringify(S.save!.progress) + S.save!.day + S.save!.season;
       const after = JSON.stringify(fresh.progress) + fresh.day + fresh.season;
-      if (before === after) return;
+      if (before === after && !staleShape(S.save!)) return;
       if (!onboarding) onboarding = await import('./screens/onboarding');
       onboarding.applySave(fresh);
       save();
@@ -561,6 +579,20 @@ if (bridge) {
     setBridgeState(st);
     render();
   });
+  // Перечитываем сейв при запуске, не спрашивая, изменилось ли что-то.
+  // Это снимает весь класс проблемы со снимком из localStorage: после
+  // обновления приложения он всегда свежий, какие бы поля ни добавились.
+  // Галочки при этом не теряются — applySave объединяет, а не заменяет.
+  if (S.save && isDesktop) {
+    void (async () => {
+      const fresh = await bridge!.saves.read(S.save!.id);
+      if (!fresh || !fresh.bundlesSupported) return;
+      if (!onboarding) onboarding = await import('./screens/onboarding');
+      onboarding.applySave(fresh);
+      save();
+      render();
+    })();
+  }
   if (S.save) void refreshBelongings(S.save.id);
   // иконки читаются один раз: они меняются только при обновлении игры
   void bridge.game.icons().then((map) => {
