@@ -1,11 +1,11 @@
 import type { Bundle, Item } from '../types';
 import { DOW, LVL, SEASON_RU } from '../data/constants';
 import { GATES, PLAN } from '../data/plan';
-import { ALL, ROOMS, S } from '../state';
+import { ALL, ROOMS, S, progress } from '../state';
 import { bprog, cartInfo, cartToday, dow, done, nextCart, st, totals } from '../logic/status';
 import { filterActive, visible } from '../logic/filters';
 import { norm } from '../logic/search';
-import { bundleHTML, esc, flat, vaultHTML } from '../ui/html';
+import { bundleHTML, esc, flat, vaultCardHTML } from '../ui/html';
 import { searchVerdict } from '../ui/searchVerdict';
 import { todayHTML } from './today';
 
@@ -38,13 +38,19 @@ function matchBundle(b: Bundle): boolean {
 export function renderRooms(): string {
   let h = searchVerdict();
   ROOMS.forEach((r) => {
-    if (r.vault) {
-      if (!S.q && !filterActive()) h += vaultHTML(r);
-      return;
-    }
-    const bs = r.bundles.filter(matchBundle);
+    // Сейф раньше рисовался отдельной веткой и выбивался из остального:
+    // другой заголовок, строки вместо карточек, никогда не сворачивался.
+    // Внутри он и правда другой — там денежные взносы, а не предметы, —
+    // но выглядеть должен так же.
+    const isVault = !!r.vault;
+    if (isVault && (S.q || filterActive())) return;
+
+    const bs = isVault ? r.bundles : r.bundles.filter(matchBundle);
     if (!bs.length) return;
-    const ok = r.bundles.filter((b) => bprog(b).ok).length;
+    const paid = progress().checked;
+    const ok = isVault
+      ? r.bundles.filter((b) => paid[b.id]).length
+      : r.bundles.filter((b) => bprog(b).ok).length;
 
     // Закрытая комната сворачивается в одну строку: шесть свёрнутых
     // карточек занимали целый экран, а смотреть на них незачем.
@@ -65,13 +71,19 @@ export function renderRooms(): string {
     // Закрытые узелки уходят в конец: свёрнутая карточка занимает строку,
     // открытая — половину экрана, и вперемешку они рвут сетку дырами.
     // Внутри групп порядок прежний, он осмысленный — по сезонам.
-    const sorted = bs.slice().sort((a, c) =>
+    // У Сейфа взносы идут по возрастанию суммы, и это тоже осмысленно.
+    const sorted = isVault ? bs : bs.slice().sort((a, c) =>
       (bprog(a).ok ? 1 : 0) - (bprog(c).ok ? 1 : 0));
 
     // Заголовок сам по себе кнопка: крестик справа читался как «закрыть»,
     // а не «свернуть», и целиться в него надо было через весь экран.
+    // у Сейфа считают не штуки, а деньги — счётчик в золоте понятнее
+    const sum = isVault
+      ? r.bundles.filter((b) => paid[b.id]).reduce((a, b) => a + (b.gold || 0), 0)
+        .toLocaleString('ru') + ' / 42 500 з.'
+      : ok + '/' + r.bundles.length;
     const head = esc(r.name)
-      + ' <span>' + ok + '/' + r.bundles.length + ' · ' + esc(r.open)
+      + ' <span>' + sum + ' · ' + esc(r.open)
       + ' · награда: ' + esc(r.reward) + '</span>';
     h += '<div class="panel"><h2 class="room">'
       + (foldable
@@ -81,7 +93,9 @@ export function renderRooms(): string {
           : head)
       + '</h2>'
       + (r.caution ? '<p class="note">⚠ ' + r.caution + '</p>' : '')
-      + '<div class="grid">' + sorted.map(bundleHTML).join('') + '</div></div>';
+      + '<div class="grid">'
+      + sorted.map((b) => (isVault ? vaultCardHTML(b) : bundleHTML(b))).join('')
+      + '</div></div>';
   });
   if (h) return h;
   return '<p class="empty">' + (filterActive()

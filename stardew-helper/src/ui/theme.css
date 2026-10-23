@@ -376,16 +376,18 @@ ul.items li:last-child{border-bottom:0}
 .bundle.done{opacity:.5}
 .bundle h3{margin:0 0 4px;font-size:15.5px;font-weight:650;display:flex;gap:9px;
   align-items:center;flex-wrap:wrap}
-.bundle .meta{color:var(--dim);font-size:13px;margin-bottom:12px}
+.bundle .meta{color:var(--dim);font-size:13px;margin-bottom:12px;
+  display:flex;flex-direction:column;gap:3px}
 .bundle .bar{margin-bottom:2px}
 
-/* ---------- Сейф ---------- */
-.vault{display:flex;flex-direction:column;gap:2px;margin-top:12px}
-.vault label{display:flex;gap:11px;align-items:center;padding:11px 0;font-size:15px;
-  border-bottom:1px solid var(--line);cursor:pointer}
-.vault label:last-child{border-bottom:0}
-.vault input{accent-color:var(--now);width:17px;height:17px}
-.vault .rw{color:var(--dim);font-size:13px;margin-left:auto}
+/* ---------- Сейф ----------
+   Взносы теперь такие же карточки, как узелки: Сейф выбивался из
+   остальных комнат списком галочек. Внутри он и правда другой — там
+   оплата, а не предметы, — но выглядеть должен одинаково. */
+.vaultcard .vpay{display:flex;gap:10px;align-items:center;cursor:pointer;
+  font-size:13.5px;color:var(--dim);padding:7px 0 1px}
+.vaultcard .vpay:hover span{color:var(--ink)}
+.vaultcard .vpay input{accent-color:var(--now);width:17px;height:17px}
 
 /* ---------- план по сезонам ---------- */
 .cols{display:grid;gap:24px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));

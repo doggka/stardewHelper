@@ -1,4 +1,4 @@
-import type { Bundle, Item, Room, Status } from '../types';
+import type { Bundle, Item, Status } from '../types';
 import { LVL, SEASON_RU, WIKI } from '../data/constants';
 import { LOC } from '../data/locations';
 import { ALL, S, progress } from '../state';
@@ -167,8 +167,13 @@ export function bundleHTML(b: Bundle): string {
           + '<span class="chev" aria-hidden="true">▲</span></button>'
         : head)
     + '</h3>'
-    + '<div class="meta">Награда: ' + esc(b.reward) + ' · реально закрыть: '
-    + SEASON_RU[b.earliest].toLowerCase() + ', 1-й год</div>'
+    // Две разные вещи — награда и срок — читались одной строкой через
+    // точку. У закрытого узелка срок вообще не нужен: это совет к
+    // планированию, а планировать уже нечего.
+    + '<div class="meta"><span>🎁 ' + esc(b.reward) + '</span>'
+    + (p.ok ? '' : '<span>📅 реально закрыть: ' + SEASON_RU[b.earliest].toLowerCase()
+        + ', 1-й год</span>')
+    + '</div>'
     + '<div class="bar" style="margin-bottom:6px"><i style="width:' + (p.c / p.n * 100) + '%"></i></div>';
   h += noteHTML(b.note);
   h += slotsHTML(b, vis)
@@ -226,14 +231,20 @@ function slotsHTML(b: Bundle, vis: Item[]): string {
     + '</div>';
 }
 
-export function vaultHTML(r: Room): string {
-  const ch = progress().checked;
-  const paid = r.bundles.filter((b) => ch[b.id]).reduce((a, b) => a + (b.gold || 0), 0);
-  return '<div class="panel"><h2>Сейф <em>— ' + paid.toLocaleString('ru') + ' / 42 500 з.</em></h2>'
-    + '<p class="note">' + r.caution + '</p><div class="vault">'
-    + r.bundles.map((b) => '<label><input type="checkbox" data-chk="' + b.id + '" ' + (ch[b.id] ? 'checked' : '') + '>'
-      + '<span>' + esc(b.name) + '</span><span class="rw">' + esc(b.reward) + '</span></label>').join('')
-    + '</div></div>';
+/**
+ * Взнос в Сейф карточкой — такой же, как у узелка, но внутри не предметы,
+ * а оплата. Поэтому ни слотов, ни подсветки по сезону: собирать нечего,
+ * платить можно когда угодно, были бы деньги.
+ */
+export function vaultCardHTML(b: Bundle): string {
+  const ok = !!progress().checked[b.id];
+  return '<div class="bundle vaultcard' + (ok ? ' done' : '') + '">'
+    + '<h3>' + (ok ? '✓ ' : '') + esc(b.name)
+    + '<span class="b g">' + (ok ? 'оплачено' : 'не оплачено') + '</span></h3>'
+    + '<div class="meta"><span>🎁 ' + esc(b.reward) + '</span></div>'
+    + '<label class="vpay"><input type="checkbox" data-chk="' + b.id + '"'
+    + (ok ? ' checked' : '') + '><span>отметить оплату</span></label>'
+    + '</div>';
 }
 
 export const flat = (arr: Item[], opts: ItemOpts = {}): string =>
