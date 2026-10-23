@@ -131,6 +131,9 @@ namespace StardewHelperBridge
             sb.Append($"\"season\":{Json.Quote(Game1.currentSeason)},");
             sb.Append($"\"year\":{Game1.year},");
             sb.Append($"\"weather\":{Json.Quote(Game1.isRaining ? "rain" : "sun")},");
+            sb.Append($"\"luck\":{DayInfo.Luck().ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)},");
+            sb.Append($"\"weatherTomorrow\":{Json.Quote(DayInfo.WeatherTomorrow())},");
+            sb.Append($"\"needWater\":{DayInfo.NeedWater()},");
             sb.Append($"\"cartPresent\":{(present ? "true" : "false")},");
             // кэшированное поле игры рядом с вычисленным: если они разойдутся,
             // это станет видно прямо в файле, а не останется невидимым

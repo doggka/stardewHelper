@@ -1,4 +1,4 @@
-import type { BridgeState, Item } from '../types';
+import type { BridgeState, Item, SaveSummary } from '../types';
 import { DOW, SEASON_GEN, SEASON_KEY, SEASON_RU } from '../data/constants';
 import { ALL, S } from '../state';
 import { bprog, cartToday, dow, done, nextCart, st } from '../logic/status';
@@ -18,7 +18,15 @@ export function lastPlantDay(it: Item): number | null {
   return 28 - it.grow;
 }
 
-/** Культуры, которые ещё не сданы и вот-вот перестанут успевать вырасти. */
+/**
+ * Культуры, которые ещё не сданы и которые надо посадить.
+ *
+ * Раньше показывались только когда до крайнего дня оставалось ≤5 дней.
+ * Из-за этого пшеница (растёт 4 дня, крайний день 24-й) молчала весь
+ * сезон, а потом всплывала в «можно взять сейчас» — где ей вообще
+ * не место. Теперь показываем весь сезон, но по-разному: спокойно,
+ * пока есть запас, и настойчиво, когда срок близко.
+ */
 export function urgentCrops(): { it: Item; last: number; left: number }[] {
   const out: { it: Item; last: number; left: number }[] = [];
   ALL.forEach((it) => {
@@ -28,24 +36,38 @@ export function urgentCrops(): { it: Item; last: number; left: number }[] {
     const last = lastPlantDay(it);
     if (last === null) return;
     const left = last - S.day;
-    if (left < 0 || left > 5) return; // показываем только когда уже горит
+    if (left < 0) return; // сажать уже поздно, об этом говорит другая строка
     out.push({ it, last, left });
   });
   return out.sort((a, b) => a.left - b.left);
 }
 
 /**
- * Что реально можно добыть сегодня: сезон и погода уже совпали, осталось
- * максимум попасть во время суток. Тот же критерий, по которому строка
- * предмета подсвечивается в комнатах — иначе блок и комнаты расходились бы
- * в советах.
+ * Что реально можно добыть сегодня: пойти и взять.
+ *
+ * Культуры сюда не входят. Их нельзя «взять сейчас» — их сажают и ждут,
+ * и погода им безразлична. Раньше сюда попадали все 20 культур, как
+ * только совпадал сезон, и получалось «Можно взять сейчас: Пшеница ·
+ * сезон и погода подходят», хотя пшеница даже не посажена.
  */
 function availableToday(): Item[] {
   return ALL.filter((it) => {
     if (it.bundle.room.extra || done(it) || bprog(it.bundle).ok) return false;
+    if (it.grow) return false;
     const s = st(it);
     return s.lvl === 'now' || (s.lvl === 'cond' && !s.hard);
   });
+}
+
+/**
+ * Предметы, которые ловятся только в дождь. Их во всей игре пять, и все —
+ * рыба: Сом, Шэд, Берикс, Жёлтый судак, Угорь. Поэтому дождливый день
+ * и есть главная причина бросить дела и пойти на речку.
+ */
+function rainOnly(): Item[] {
+  return ALL.filter((it) => it.w === 'rain' && !it.bundle.room.extra
+    && !done(it) && !bprog(it.bundle).ok && !covered(it)
+    && (!it.s || it.s.indexOf(S.season) >= 0));
 }
 
 /**
@@ -56,6 +78,58 @@ const isFish = (it: Item): boolean => it.bundle.room.id === 'fishtank';
 
 /** Последнее, что отдал мод-мостик. Обновляется при возврате фокуса в окно. */
 let bridgeState: BridgeState | null = null;
+
+/** Данные про сегодня годятся, только если это и правда сегодня. */
+function liveBridge(): BridgeState | null {
+  const b = bridgeState;
+  if (!b) return null;
+  const same = b.day === S.day && b.season === SEASON_KEY[S.season]
+    && (!S.save || b.year === S.save.year);
+  return same ? b : null;
+}
+
+/**
+ * Сейв как запасной источник удачи и завтрашней погоды, когда мода нет.
+ * Годится, только если показанная дата совпадает с сохранённой: иначе его
+ * сводка не про тот день, который на экране.
+ */
+function liveSave(): SaveSummary | null {
+  const s = S.save;
+  if (!s) return null;
+  return s.day === S.day && s.season === S.season ? s : null;
+}
+
+/**
+ * Удача дня словами, а не числом: в игре это говорят духи по телевизору,
+ * и цифра −0.07 никому ничего не объясняет. Пороги взяты по тому, как
+ * игра сама делит диапазон −0.1…0.1 на фразы.
+ */
+function luckLine(): string {
+  const b = liveBridge();
+  const v = b && typeof b.luck === 'number' ? b.luck : liveSave()?.luck;
+  if (v === undefined || v === null) return '';
+  const txt = v <= -0.07 ? 'духи недовольны — день неудачный'
+    : v < -0.02 ? 'духи ворчат — удача ниже обычного'
+    : v <= 0.02 ? 'духи спокойны — обычный день'
+    : v < 0.07 ? 'духи в хорошем настроении'
+    : 'духи очень довольны — лучший день для шахты и рыбалки';
+  return ' · <span class="tluck">' + txt + '</span>';
+}
+
+function tomorrowLine(): string {
+  const b = liveBridge();
+  const known = (b && b.weatherTomorrow) || liveSave();
+  if (!known) return '';
+  return ' · завтра ' + (tomorrowRain() ? 'дождь' : 'ясно');
+}
+
+function tomorrowRain(): boolean {
+  const b = liveBridge();
+  if (b && b.weatherTomorrow) {
+    return /^(Rain|Storm|GreenRain)$/.test(b.weatherTomorrow);
+  }
+  return liveSave()?.weatherTomorrow === 'rain';
+}
 
 /**
  * Игровой день, погоду которого мы уже перенесли из игры.
@@ -168,17 +242,36 @@ export function todayHTML(): string {
 
   // 0. Рыбалка — единственный пункт про «идти или не идти», остальные про
   //    «не забудь». Поэтому первой и отдельно.
+  //
+  //    Считаем не количество, а погоду. Дождевых предметов в игре пять,
+  //    и все — рыба; в ясный день их не поймать вовсе. Поэтому дождь —
+  //    это повод бросить дела, а ясная погода поводом быть не может,
+  //    сколько бы рыбы ни клевало.
   const fish = avail.filter(isFish);
+  const rain = rainOnly();
+  const wetToday = S.weather === 'rain';
   let head = '';
-  if (fish.length) {
+  if (wetToday && rain.length) {
+    head = '<div class="tfish">' + expandable('fish', 'urgent', '🌧',
+      'Сегодня дождь — лови: ' + rain.slice(0, 3).map((i) => esc(i.n)).join(', ')
+      + (rain.length > 3 ? ' и ещё ' + (rain.length - 3) : ''),
+      'только в дождь и никак иначе; дожди редкие, следующего можно ждать долго',
+      rain) + '</div>';
+  } else if (!wetToday && tomorrowRain() && rain.length) {
+    head = '<div class="tfish">' + expandable('fish', '', '🌧',
+      'Завтра дождь — будет шанс на ' + rain.slice(0, 3).map((i) => esc(i.n)).join(', ')
+      + (rain.length > 3 ? ' и ещё ' + (rain.length - 3) : ''),
+      'приготовь удочку и наживку, в ясную погоду их не поймать',
+      rain) + '</div>';
+  } else if (fish.length) {
     const lastOnes = fish.filter((i) => st(i).last);
     head = '<div class="tfish">' + expandable('fish', lastOnes.length ? 'urgent' : '', '🎣',
-      'Рыбалка сегодня: ' + fish.length
-      + (lastOnes.length ? ', из них ' + lastOnes.length + ' в последний сезон' : ''),
       lastOnes.length
-        ? 'идти стоит: ' + lastOnes.slice(0, 3).map((i) => esc(i.n)).join(', ')
-          + ' иначе в этом году уже не достать'
-        : 'ничего не горит — можно и не ходить, всё ловится и дальше',
+        ? 'Последний сезон: ' + lastOnes.slice(0, 3).map((i) => esc(i.n)).join(', ')
+        : 'Клюёт сегодня: ' + fish.length,
+      lastOnes.length
+        ? 'в этом году другого случая не будет'
+        : 'спешки нет — эта рыба ловится и дальше',
       fish) + '</div>';
   }
 
@@ -203,22 +296,40 @@ export function todayHTML(): string {
       closingAll, { lastIsImplied: true }));
   }
 
-  // 2. Культуры, которым вот-вот станет поздно
+  // 2. Что посадить. Говорим весь сезон, но тон зависит от запаса:
+  //    пока есть время — спокойно, ближе к сроку — настойчиво.
   const crops = urgentCrops();
   if (crops.length) {
     const c = crops[0];
-    rows.push(expandable('crops', c.left <= 1 ? 'urgent' : '', '🌱',
-      esc(c.it.n) + (c.left <= 0 ? ' — сажай сегодня' : ' — осталось ' + c.left + ' дн. на посадку'),
-      'растёт ' + c.it.grow + ' дней, крайний день посадки — ' + c.last + ' '
+    const soon = c.left <= 3;
+    const lastYear = !!st(c.it).last;
+    rows.push(expandable('crops', soon ? 'urgent' : '', '🌱',
+      c.left <= 0
+        ? 'Сажай сегодня: ' + esc(c.it.n) + ' — завтра уже не успеет'
+        : 'Посади ' + esc(c.it.n) + ': осталось ' + c.left + ' дн.',
+      'растёт ' + c.it.grow + ' дн., крайний день посадки — ' + c.last + ' '
       + SEASON_RU[S.season].toLowerCase()
-      + (crops.length > 1 ? '. Ещё ' + (crops.length - 1) + ' на подходе' : ''),
+      + (lastYear ? '. В этом году сезон для неё последний' : '')
+      + (crops.length > 1 ? '. Всего ждут посадки: ' + crops.length : ''),
       crops.map((x) => x.it)));
   }
 
-  // 3. Всё остальное, что доступно именно сейчас.
-  //    Без рыбы (она выше), без того, что уже есть, и без вещей вне
-  //    сезонов: древесина и камень доступны каждый день весь год —
-  //    новостью они быть не могут.
+  // 3. Полив. Живое значение берём у мода: сейв переписывается только
+  //    когда спишь, и его ответ устаревает, как только польёшь руками.
+  const b = liveBridge();
+  if (b && typeof b.needWater === 'number' && b.needWater > 0) {
+    rows.push('<div class="trow"><span class="tico">💧</span><div>'
+      + '<b>Полить: ' + b.needWater + ' гр.</b>'
+      + '<span class="tsub">'
+      + (tomorrowRain() ? 'завтра дождь — польёт само, но сегодня им ещё нужна вода'
+         : 'без полива день роста пропадёт')
+      + '</span></div></div>');
+  }
+
+  // 4. Сходить и собрать. Без рыбы (она выше), без культур (их сажают,
+  //    а не берут), без того, что уже есть, и без вещей вне сезонов:
+  //    древесина и камень доступны каждый день весь год — новостью они
+  //    быть не могут.
   const other = avail.filter((i) => !isFish(i) && i.s && !covered(i));
   if (other.length) {
     // одинаковые названия из разных узелков схлопываем: «Древесина,
@@ -226,9 +337,10 @@ export function todayHTML(): string {
     const names: string[] = [];
     other.forEach((i) => { if (names.indexOf(i.n) < 0) names.push(i.n); });
     rows.push(expandable('now', '', '🧺',
-      'Можно взять сейчас: ' + names.slice(0, 3).map(esc).join(', ')
+      'Сходить и собрать: ' + names.slice(0, 3).map(esc).join(', ')
       + (names.length > 3 ? ' и ещё ' + (names.length - 3) : ''),
-      'сезон и погода подходят' + (S.weather === 'rain' ? ' · дождь' : ''),
+      // про погоду пишем только когда она правда решает, а не всегда
+      'сезон подходит',
       other));
   }
 
@@ -238,7 +350,8 @@ export function todayHTML(): string {
   return head
     + '<div class="today">'
     + '<div class="thead">' + DOW[dow(S.day)] + ', ' + S.day + ' ' + SEASON_RU[S.season].toLowerCase()
-    + ', ' + (S.weather === 'rain' ? 'дождь' : 'ясно') + '</div>'
+    + ', ' + (S.weather === 'rain' ? 'дождь' : 'ясно')
+    + luckLine() + tomorrowLine() + '</div>'
     + rows.join('') + '</div>';
 }
 

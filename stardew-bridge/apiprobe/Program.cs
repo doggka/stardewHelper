@@ -51,3 +51,11 @@ Dump("CropData", "DaysInPhase", "Season", "HarvestItem");
 Dump("ParsedItemData", "DisplayName", "ItemId", "Category");
 Dump("StardewValley.TokenizableStrings.TokenParser", "ParseText");
 Dump("StardewValley.ItemRegistry", "GetData", "Create");
+
+// --- сводка дня: полив, удача, погода на завтра, живность ---
+Dump("StardewValley.TerrainFeatures.HoeDirt", "state", "needsWatering", "crop");
+Dump("StardewValley.Game1", "dailyLuck", "weatherForTomorrow", "getFarm");
+Dump("StardewValley.Farm", "animals", "buildings");
+Dump("FarmAnimal", "friendship", "type", "isBaby", "wasPet");
+Dump("StardewValley.Farmer", "DailyLuck", "dailyLuck", "LuckLevel");
+Dump("FarmerTeam", "Luck");

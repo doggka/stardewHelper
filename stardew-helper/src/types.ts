@@ -141,6 +141,10 @@ export interface SaveSummary {
   year: number;
   /** погода в долине на сегодня — только «мокро или нет» */
   weather: Weather;
+  /** игра знает погоду заранее; это решение на сегодняшний вечер */
+  weatherTomorrow: Weather;
+  /** удача дня, −0.1…0.1 — то, что духи говорят по телевизору */
+  luck: number;
   gameVersion: string | null;
   /** можно ли импортировать прогресс узелков */
   bundlesSupported: boolean;
@@ -169,7 +173,14 @@ export interface BridgeState {
   season: string;
   year: number;
   weather: string;
+  /** −0.1…0.1 */
+  luck?: number;
+  weatherTomorrow?: string;
+  /** сколько грядок с посаженным ждёт полива; живое значение, не «на утро» */
+  needWater?: number;
   cartPresent: boolean;
+  /** кэшированное поле игры рядом с вычисленным — чтобы расхождение было видно */
+  cartFlag?: boolean;
   cart: { name: string; price: number; stock: number }[];
 }
 

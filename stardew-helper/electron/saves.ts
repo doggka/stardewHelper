@@ -41,10 +41,25 @@ function tag(xml: string, name: string): string | null {
  * и зелёный дождь. Wind — это мусор в воздухе, а Snow в игре дождём
  * не считается, и рыба на дождь при снеге не ловится.
  */
+const wet = (w: string): 'sun' | 'rain' =>
+  w === 'Rain' || w === 'Storm' || w === 'GreenRain' ? 'rain' : 'sun';
+
+function weatherBlock(xml: string): RegExpExecArray | null {
+  return /<key><string>Default<\/string><\/key><value><LocationWeather><weatherForTomorrow><string>([A-Za-z]*)<\/string><\/weatherForTomorrow><weather><string>([A-Za-z]*)<\/string><\/weather>/.exec(xml);
+}
+
 function readWeather(xml: string): 'sun' | 'rain' {
-  const m = /<key><string>Default<\/string><\/key><value><LocationWeather>[\s\S]*?<weather><string>([A-Za-z]*)<\/string><\/weather>/.exec(xml);
-  const w = m ? m[1] : 'Sun';
-  return w === 'Rain' || w === 'Storm' || w === 'GreenRain' ? 'rain' : 'sun';
+  const m = weatherBlock(xml);
+  return wet(m ? m[2] : 'Sun');
+}
+
+/**
+ * Погода на завтра. Игра знает её заранее, и это решение на сегодняшний
+ * вечер: польёт само, или готовь удочку, или успей посадить.
+ */
+function readWeatherTomorrow(xml: string): 'sun' | 'rain' {
+  const m = weatherBlock(xml);
+  return wet(m ? m[1] : 'Sun');
 }
 
 interface ParsedBundles {
@@ -93,6 +108,9 @@ function readSaveFile(folder: string, root: string): SaveSummary | null {
   }
 
   const weather = readWeather(xml);
+  const weatherTomorrow = readWeatherTomorrow(xml);
+  // удача дня, −0.1…0.1 — то, что духи говорят по телевизору
+  const luck = parseFloat(tag(xml, 'dailyLuck') || '0') || 0;
   const seasonKey = tag(xml, 'currentSeason') || 'spring';
   const season = Math.max(0, SEASON_KEY.indexOf(seasonKey)) as Season;
   const version = tag(xml, 'gameVersion');
@@ -148,6 +166,8 @@ function readSaveFile(folder: string, root: string): SaveSummary | null {
     season,
     day: parseInt(tag(xml, 'dayOfMonth') || '1', 10),
     weather,
+    weatherTomorrow,
+    luck,
     year: parseInt(tag(xml, 'year') || '1', 10),
     gameVersion: version,
     bundlesSupported: !unsupported,

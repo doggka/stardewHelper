@@ -80,7 +80,8 @@ function trackerChrome(): string {
       + '<button class="play" data-act="play">▶ Играть'
       + '<span class="pmode">' + esc(curLaunch[1].replace(/^Через /, '')) + '</span></button>'
       + '<button class="playmore" data-act="playMenu" aria-haspopup="true"'
-      + ' aria-expanded="' + playOpen + '" aria-label="Чем запускать">▾</button>'
+      // «▾» в мелком кегле читалась как точка — берём сплошной треугольник
+      + ' aria-expanded="' + playOpen + '" aria-label="Чем запускать">▼</button>'
       + (playOpen
           ? '<div class="menu" role="menu">'
             + LAUNCH.map(([k, n, sub]) => {

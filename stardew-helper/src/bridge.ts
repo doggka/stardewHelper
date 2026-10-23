@@ -49,7 +49,8 @@ if (import.meta.env.DEV && location.search.includes('mock') && !window.sdv) {
     gameVersion: string | null, completedBundles: number, skipped: string[],
   ): SaveSummary => ({
     id, folder: farmName, file: '', root: 'MOCK',
-    farmName, playerName, season, day, year, gameVersion, weather: 'sun',
+    farmName, playerName, season, day, year, gameVersion,
+    weather: 'sun', weatherTomorrow: 'rain', luck: 0.08,
     bundlesSupported: true, skipped, donatedCount: 0, completedBundles,
     progress: {}, vault: {},
   });
