@@ -64,6 +64,9 @@ export function renderRooms(): string {
         + '<span class="bf-ok">✓</span>'
         + '<span class="bf-name">' + esc(r.name) + '</span>'
         + '<span class="b g">' + ok + '/' + r.bundles.length + '</span>'
+        // подписи «развернуть» тут нет, и без указателя было не понять,
+        // что строка вообще раскрывается
+        + '<span class="chev" aria-hidden="true"></span>'
         + '</button></div>';
       return;
     }
@@ -89,7 +92,7 @@ export function renderRooms(): string {
       + (foldable
           ? '<button class="rhead" data-room="' + r.id + '" aria-expanded="true"'
             + ' aria-label="Свернуть: ' + esc(r.name) + '">' + head
-            + '<span class="chev" aria-hidden="true">▲</span></button>'
+            + '<span class="chev up" aria-hidden="true"></span></button>'
           : head)
       + '</h2>'
       + (r.caution ? '<p class="note">⚠ ' + r.caution + '</p>' : '')

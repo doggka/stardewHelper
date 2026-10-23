@@ -91,8 +91,10 @@ header{position:sticky;top:0;z-index:20;background:var(--bg);
    Левая остаётся видимой: это разделитель между половинами. */
 .playmore{border-radius:0 8px 8px 0;border-color:var(--now);
   border-left-color:rgba(16,40,16,.35);
-  background:var(--now);color:#102810;padding:6px 10px;font-size:15px;
-  line-height:1;display:flex;align-items:center}
+  background:var(--now);color:#102810;padding:6px 11px;
+  line-height:1;display:flex;align-items:center;justify-content:center}
+/* на зелёном шеврон должен быть плотным, а не полупрозрачным */
+.playmore .chev{opacity:1;border-width:2.5px;width:8px;height:8px}
 .playmore:hover{background:#82d982;border-color:#82d982;
   border-left-color:rgba(16,40,16,.35)}
 /* Ширина по кнопке, а не числом: 220px были верны ровно до того, как на
@@ -238,15 +240,27 @@ button.b{font:inherit;font-size:12px;line-height:inherit;cursor:pointer}
   background:var(--card);border:0;border-radius:12px;padding:15px 20px;font-size:16px}
 .rfold:hover{background:var(--card2);border:0}
 .rfold .bf-name{font-weight:650;color:var(--ink)}
+/* указатель в свёрнутой карточке: подписи «развернуть» там нет, и без
+   него не видно, что строка вообще раскрывается */
+.rfold .chev,.bfold .chev{color:var(--faint);margin-left:2px}
+.rfold:hover .chev,.bfold:hover .chev{color:var(--ink);opacity:1}
 /* Заголовок как кнопка: крестик справа читался как «закрыть», а не
    «свернуть», и целиться в него надо было через весь экран. */
 .rhead,.bhead{width:100%;display:flex;align-items:baseline;gap:9px;
   background:none;border:0;padding:0;text-align:left;color:inherit;
   font:inherit;border-radius:7px}
 .rhead:hover,.bhead:hover{background:none;color:var(--acc)}
-.rhead .chev,.bhead .chev{margin-left:auto;color:var(--faint);font-size:11px;
-  flex:0 0 auto;align-self:center}
-.rhead:hover .chev,.bhead:hover .chev{color:var(--acc)}
+/* Шеврон рисуем границами, а не символом: глифы вроде ⌄ в разных шрифтах
+   начертаны по-разному, а где-то подменяются системным и выглядят как
+   запятая. Сплошной ▼ при этом читался как значок из таблицы символов,
+   а не как часть интерфейса. */
+.chev{display:inline-block;width:7px;height:7px;flex:0 0 auto;
+  border-right:2px solid currentColor;border-bottom:2px solid currentColor;
+  border-radius:1px;opacity:.7;
+  transform:translateY(-2px) rotate(45deg)}
+.chev.up{transform:translateY(2px) rotate(-135deg)}
+.rhead .chev,.bhead .chev{margin-left:auto;color:var(--faint);align-self:center}
+.rhead:hover .chev,.bhead:hover .chev{color:var(--acc);opacity:1}
 
 /* ---------- свёрнутый закрытый узелок ---------- */
 .bundle.folded{padding:0;background:none}

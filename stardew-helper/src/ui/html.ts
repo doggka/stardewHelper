@@ -151,6 +151,7 @@ export function bundleHTML(b: Bundle): string {
       + '<span class="bf-ok">✓</span>'
       + '<span class="bf-name">' + esc(b.name) + '</span>'
       + '<span class="b g">' + p.n + '/' + p.n + '</span>'
+      + '<span class="chev" aria-hidden="true"></span>'
       + '</button></div>';
   }
 
@@ -164,7 +165,7 @@ export function bundleHTML(b: Bundle): string {
     + (p.ok
         ? '<button class="bhead" data-fold="' + b.id + '" aria-expanded="true"'
           + ' aria-label="Свернуть: ' + esc(b.name) + '">' + head
-          + '<span class="chev" aria-hidden="true">▲</span></button>'
+          + '<span class="chev up" aria-hidden="true"></span></button>'
         : head)
     + '</h3>'
     // Две разные вещи — награда и срок — читались одной строкой через
