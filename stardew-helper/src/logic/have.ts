@@ -17,6 +17,11 @@ export function setBelongings(b: Belongings | null): void {
   data = b;
 }
 
+/** Сундуки, карманы и грядки целиком — нужны не только для узелков. */
+export function belongings(): Belongings | null {
+  return data;
+}
+
 export interface Have {
   /** в карманах */
   bag: number;

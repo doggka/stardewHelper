@@ -133,6 +133,12 @@ export interface HeldItem {
   id: string;
   qty: number;
   quality: number;
+  /** внутриигровое имя, по-английски — запасной вариант, когда русского нет */
+  name: string;
+  /** категория предмета, отрицательное число из констант игры */
+  cat: number;
+  /** базовая цена продажи, до качества и профессий */
+  price: number;
   where: 'bag' | 'chest';
   loc?: string;
   x?: number;
@@ -169,6 +175,8 @@ export interface FarmState {
   animals: { type: string; hearts: number }[];
   /** теплица именно починена, а не просто лежит в развалинах на карте */
   greenhouse: boolean;
+  /** номера профессий: 1 — Tiller (+10 % культурам), 4 — Artisan (+40 % ремеслу) */
+  professions: number[];
 }
 
 export interface SaveSummary {

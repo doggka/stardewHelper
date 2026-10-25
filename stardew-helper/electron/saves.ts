@@ -94,8 +94,16 @@ function readFarm(xml: string): FarmState {
     animals.push({ type: m[2], hearts: parseInt(m[1], 10) });
   }
 
+  // Профессии влияют на цену продажи, а значит и на очки выставки:
+  // Tiller даёт +10 % культурам, Artisan +40 % ремесленным товарам.
+  // Номера подтверждены рефлексией по сборке игры, а не угаданы.
+  const prof = /<professions>([\s\S]*?)<\/professions>/.exec(xml);
+  const professions = prof
+    ? [...prof[1].matchAll(/<int>(\d+)<\/int>/g)].map((x) => parseInt(x[1], 10))
+    : [];
+
   return {
-    barn, coop, animals,
+    barn, coop, animals, professions,
     greenhouse: /<greenhouseUnlocked>true<\/greenhouseUnlocked>/.test(xml),
   };
 }

@@ -66,7 +66,7 @@ function defaults(): AppState {
 const SCREENS = ['welcome', 'mods', 'tracker'];
 // rooms и day — вкладки в шапке; plan и cart — справочники из меню «⋯»
 const TABS = ['rooms', 'day', 'plan', 'cart'];
-const TODAY_ROWS = ['last', 'crops', 'fish', 'now'];
+const TODAY_ROWS = ['last', 'crops', 'fish', 'now', 'fair'];
 
 /**
  * Приводит состояние в рабочий вид. Нужен и при загрузке, и при импорте файла:

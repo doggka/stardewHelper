@@ -228,6 +228,14 @@ button.b{font:inherit;font-size:12px;line-height:inherit;cursor:pointer}
   border-top:1px solid var(--line)}
 .tlist .flat li:last-child .item{padding-bottom:4px}
 
+/* Выставка на ярмарке: предмет, категория, цена и очки в строку.
+   Очки справа — по ним видно, что менять, если не хватает до порога. */
+.granged{display:flex;gap:10px;align-items:baseline;padding:7px 0;font-size:13.5px}
+.granged .gname{flex:1;min-width:0}
+.granged .gcat{color:var(--faint);font-size:12px}
+.granged .gprice{color:var(--dim);font-size:12.5px;min-width:72px;text-align:right}
+.granged .gpts{min-width:26px;text-align:right;font-weight:650;color:var(--acc)}
+
 /* возврат с справочных экранов */
 .backlink{border:0;background:none;color:var(--dim);padding:0 0 14px;font-size:13.5px}
 .backlink:hover{background:none;color:var(--ink)}

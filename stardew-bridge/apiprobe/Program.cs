@@ -60,3 +60,9 @@ Dump("FarmAnimal", "friendship", "type", "isBaby", "wasPet");
 Dump("StardewValley.Farmer", "DailyLuck", "dailyLuck", "LuckLevel");
 Dump("FarmerTeam", "Luck");
 Dump("ParsedItemData", "GetTexture", "GetSourceRect", "SpriteIndex");
+
+// --- ярмарка: как игра считает очки выставки ---
+Dump("StardewValley.Utility", "Grange", "getGrange");
+Dump("StardewValley.Event", "grange", "Grange");
+Dump("StardewValley.Object", "getCategoryName", "sellToStorePrice", "Category");
+Dump("StardewValley.Farmer", "artisan", "tiller", "rancher", "agriculturist");

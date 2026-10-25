@@ -1,5 +1,8 @@
-import type { BridgeState, Item, SaveSummary } from '../types';
+import type { BridgeState, HeldItem, Item, SaveSummary } from '../types';
 import { DOW, SEASON_GEN, SEASON_KEY, SEASON_RU } from '../data/constants';
+import { nextFestival } from '../data/festivals';
+import { ITEM_IDS } from '../data/itemIds';
+import { GRANGE_CATS, itemPoints, pickGrange, sellPrice } from '../logic/grange';
 import { ALL, S } from '../state';
 import { bprog, cartToday, dow, done, nextCart, st } from '../logic/status';
 import { norm } from '../logic/search';
@@ -211,6 +214,64 @@ function cartRow(today: string | null, nx: number | null): string {
     + '</span></div><button data-act="cartInfo">Весь список</button></div>';
 }
 
+/**
+ * Строка фестиваля. Показываем за неделю: раньше — шум, позже — поздно
+ * готовиться. У ярмарки раскрывается подбор девятки на выставку.
+ */
+function festivalRow(): string {
+  const nf = nextFestival(S.season, S.day);
+  if (!nf || nf.inDays > 7) return '';
+  const { f, inDays } = nf;
+
+  const when = inDays === 0 ? 'сегодня'
+    : inDays === 1 ? 'завтра'
+    : 'через ' + inDays + ' дн.';
+  const head = f.name + ' — ' + when;
+  const sub = f.where + ', ' + f.time + (f.prep ? ' · ' + f.prep : '');
+  const urgent = inDays <= 1 ? 'urgent' : '';
+
+  // выставка — единственный фестиваль, где мы можем посчитать за игрока
+  const g = f.day === 16 && f.season === 2 ? pickGrange() : null;
+  if (!g) {
+    return '<div class="trow' + (urgent ? ' ' + urgent : '') + '">'
+      + '<span class="tico">🎪</span><div><b>' + esc(head) + '</b>'
+      + '<span class="tsub">' + esc(sub) + '</span></div></div>';
+  }
+
+  const open = S.todayOpen.indexOf('fair') >= 0;
+  const list = '<div class="tlist"><ul class="flat">'
+    + g.picks.map((p) => '<li class="granged">'
+      + '<span class="gname">' + esc(itemName(p)) + qualityTag(p.quality) + '</span>'
+      + '<span class="gcat">' + esc(catName(p)) + '</span>'
+      + '<span class="gprice">' + sellPrice(p) + ' з.</span>'
+      + '<span class="gpts">' + itemPoints(p) + '</span></li>').join('')
+    + '</ul>'
+    + '<p class="note">Категорий представлено: ' + g.cats + ' из 8, больше шести очков не добавляют. '
+    + 'Забери предметы с прилавка после судейства — сами они не вернутся, '
+    + 'забытое уходит в бюро находок к мэру.</p></div>';
+
+  return '<div class="trow' + (urgent ? ' ' + urgent : '') + (open ? ' open' : '') + '">'
+    + '<span class="tico">🎪</span><div><b>' + esc(head) + '</b>'
+    + '<span class="tsub">по тому, что у тебя есть, выходит на ' + esc(g.place)
+    + ' — расчёт пока не сверен с игрой</span></div>'
+    + '<button data-today="fair" aria-expanded="' + open + '">'
+    + (open ? 'Свернуть' : 'Что нести') + '</button>'
+    + (open ? list : '')
+    + '</div>';
+}
+
+/** Русское название, если знаем; иначе внутриигровое английское. */
+function itemName(h: HeldItem): string {
+  const our = ALL.find((it) => ITEM_IDS[it.id] === h.id);
+  return our ? our.n : h.name;
+}
+
+const qualityTag = (q: number): string =>
+  q === 4 ? ' (иридий)' : q === 2 ? ' (золото)' : q === 1 ? ' (серебро)' : '';
+
+const catName = (h: HeldItem): string =>
+  GRANGE_CATS.find((c) => c.cats.indexOf(h.cat) >= 0)?.name ?? 'вне категорий';
+
 /** В подписи нужен простой текст: предупреждения хранятся с разметкой. */
 function stripTags(s: string): string {
   return esc(s.replace(/<[^>]+>/g, ''));
@@ -344,7 +405,11 @@ export function todayHTML(): string {
       other));
   }
 
-  // 5. Торговка. Если мод-мостик отдал список — разбираем его по нашим данным
+  // 5. Фестиваль. Дата известна заранее, и готовиться надо заранее —
+  //    поэтому предупреждаем за несколько дней, а не в то самое утро.
+  rows.push(festivalRow());
+
+  // 6. Торговка. Если мод-мостик отдал список — разбираем его по нашим данным
   rows.push(cartRow(today, nx));
 
   return head

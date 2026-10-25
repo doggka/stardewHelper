@@ -52,7 +52,8 @@ if (import.meta.env.DEV && location.search.includes('mock') && !window.sdv) {
     id, folder: farmName, file: '', root: 'MOCK',
     farmName, playerName, season, day, year, gameVersion,
     weather: 'sun', weatherTomorrow: 'rain', luck: 0.08,
-    farm: { barn: 3, coop: 2, greenhouse: false, animals: [{ type: 'Pig', hearts: 900 }] },
+    farm: { barn: 3, coop: 2, greenhouse: false, professions: [1, 4],
+      animals: [{ type: 'Pig', hearts: 900 }] },
     bundlesSupported: true, skipped, donatedCount: 0, completedBundles,
     progress: {}, vault: {},
   });
@@ -75,8 +76,12 @@ if (import.meta.env.DEV && location.search.includes('mock') && !window.sdv) {
       read: async () => null,
       belongings: async () => ({
         items: [
-          { id: '24', qty: 3, quality: 0, where: 'chest', loc: 'Farm', x: 59, y: 17 },
-          { id: '190', qty: 1, quality: 0, where: 'bag' },
+          { id: '24', qty: 3, quality: 0, name: 'Parsnip', cat: -75, price: 35,
+            where: 'chest', loc: 'Farm', x: 59, y: 17 },
+          { id: '190', qty: 1, quality: 2, name: 'Cauliflower', cat: -75, price: 175,
+            where: 'bag' },
+          { id: '72', qty: 1, quality: 0, name: 'Diamond', cat: -2, price: 750,
+            where: 'chest', loc: 'Farm', x: 59, y: 17 },
         ],
         crops: [{ id: '262', loc: 'Farm', x: 64, y: 20, days: 4 }],
       }),

@@ -19,6 +19,12 @@ export interface HeldItem {
   id: string;
   qty: number;
   quality: number;
+  /** внутриигровое имя, по-английски — запасной вариант, когда русского нет */
+  name: string;
+  /** категория предмета, отрицательное число из констант игры */
+  cat: number;
+  /** базовая цена продажи, до качества и профессий */
+  price: number;
   /** 'bag' — в карманах, иначе сундук */
   where: 'bag' | 'chest';
   loc?: string;
@@ -72,6 +78,12 @@ function readItems(xml: string, where: 'bag' | 'chest',
       id,
       qty: num(fieldAfter(xml, at, 'stack'), 1),
       quality: num(fieldAfter(xml, at, 'quality')),
+      // цена и категория лежат в самой записи предмета — мод для них
+      // не нужен. Нужны для выставки на ярмарке: там очки считаются
+      // по цене продажи, а +5 даётся за каждую представленную категорию.
+      name: fieldAfter(xml, at, 'name') ?? '',
+      cat: num(fieldAfter(xml, at, 'category')),
+      price: num(fieldAfter(xml, at, 'price')),
       where, loc, x, y,
     });
   }
