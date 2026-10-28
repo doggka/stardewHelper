@@ -1,6 +1,6 @@
 import type { BridgeState, HeldItem, Item, SaveSummary } from '../types';
 import { DOW, SEASON_GEN, SEASON_KEY, SEASON_RU } from '../data/constants';
-import { nextFestival } from '../data/festivals';
+import { FAIR_SHOP, FESTIVAL_COMMON, nextFestival } from '../data/festivals';
 import { ITEM_IDS } from '../data/itemIds';
 import { GRANGE_CATS, itemPoints, pickGrange, sellPrice } from '../logic/grange';
 import { ALL, S } from '../state';
@@ -226,37 +226,67 @@ function festivalRow(): string {
   const when = inDays === 0 ? 'сегодня'
     : inDays === 1 ? 'завтра'
     : 'через ' + inDays + ' дн.';
-  const head = f.name + ' — ' + when;
-  const sub = f.where + ', ' + f.time + (f.prep ? ' · ' + f.prep : '');
-  const urgent = inDays <= 1 ? 'urgent' : '';
+  const isFair = f.season === 2 && f.day === 16;
+  const g = isFair ? pickGrange() : null;
+  const open = S.todayOpen.indexOf('fair') >= 0;
 
-  // выставка — единственный фестиваль, где мы можем посчитать за игрока
-  const g = f.day === 16 && f.season === 2 ? pickGrange() : null;
-  if (!g) {
-    return '<div class="trow' + (urgent ? ' ' + urgent : '') + '">'
-      + '<span class="tico">🎪</span><div><b>' + esc(head) + '</b>'
-      + '<span class="tsub">' + esc(sub) + '</span></div></div>';
+  const sub = g
+    ? 'по тому, что у тебя есть, выходит на ' + esc(g.place) + ' — расчёт пока не сверен с игрой'
+    : esc(f.where + ', ' + f.time) + (f.prep ? ' · ' + esc(f.prep) : '');
+
+  let body = '';
+  if (g) {
+    body += '<ul class="flat">'
+      + g.picks.map((p) => '<li class="granged">'
+        + '<span class="gname">' + esc(itemName(p)) + qualityTag(p.quality) + '</span>'
+        + '<span class="gcat">' + esc(catName(p)) + '</span>'
+        + '<span class="gprice">' + sellPrice(p) + ' з.</span>'
+        + '<span class="gpts">' + itemPoints(p) + '</span></li>').join('')
+      + '</ul>'
+      + '<p class="note">Категорий представлено: ' + g.cats + ' из 8, больше шести очков не добавляют. '
+      + 'Забери предметы с прилавка после судейства — сами они не вернутся, '
+      + 'забытое уходит в бюро находок к мэру.</p>';
   }
 
-  const open = S.todayOpen.indexOf('fair') >= 0;
-  const list = '<div class="tlist"><ul class="flat">'
-    + g.picks.map((p) => '<li class="granged">'
-      + '<span class="gname">' + esc(itemName(p)) + qualityTag(p.quality) + '</span>'
-      + '<span class="gcat">' + esc(catName(p)) + '</span>'
-      + '<span class="gprice">' + sellPrice(p) + ' з.</span>'
-      + '<span class="gpts">' + itemPoints(p) + '</span></li>').join('')
-    + '</ul>'
-    + '<p class="note">Категорий представлено: ' + g.cats + ' из 8, больше шести очков не добавляют. '
-    + 'Забери предметы с прилавка после судейства — сами они не вернутся, '
-    + 'забытое уходит в бюро находок к мэру.</p></div>';
+  if (f.what && f.what.length) {
+    body += '<p class="fsub">Что там будет</p><ul class="note notelist">'
+      + f.what.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>';
+  }
 
-  return '<div class="trow' + (urgent ? ' ' + urgent : '') + (open ? ' open' : '') + '">'
-    + '<span class="tico">🎪</span><div><b>' + esc(head) + '</b>'
-    + '<span class="tsub">по тому, что у тебя есть, выходит на ' + esc(g.place)
-    + ' — расчёт пока не сверен с игрой</span></div>'
+  // Магазин за жетоны: главное число — 2000 за каплю при 1000 за первое
+  // место. Понять это надо до ярмарки, а не стоя у прилавка.
+  if (isFair) {
+    body += '<p class="fsub">На что тратить жетоны</p><ul class="flat">'
+      + FAIR_SHOP.map((p) => '<li class="granged">'
+        + '<span class="gname">' + esc(p.name) + '</span>'
+        + '<span class="gcat">' + esc(p.note ?? '') + '</span>'
+        + '<span class="gpts">' + p.cost + '</span></li>').join('')
+      + '</ul>'
+      + '<p class="note">Каждый товар — один раз в год, жетоны на следующий год '
+      + 'не переносятся. Первое место даёт 1000, а капля стоит 2000: одной выставки '
+      + 'не хватит, добирай на мини-играх.</p>';
+  }
+
+  // Накануне напоминаем про закрытые магазины и съеденный день.
+  if (inDays <= 1) {
+    body += '<ul class="note notelist">'
+      + FESTIVAL_COMMON.map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>';
+  }
+
+  const urgent = inDays <= 1 ? ' urgent' : '';
+  if (!body) {
+    return '<div class="trow' + urgent + '"><span class="tico">🎪</span><div>'
+      + '<b>' + esc(f.name) + ' — ' + when + '</b>'
+      + '<span class="tsub">' + sub + '</span></div></div>';
+  }
+
+  return '<div class="trow' + urgent + (open ? ' open' : '') + '">'
+    + '<span class="tico">🎪</span><div>'
+    + '<b>' + esc(f.name) + ' — ' + when + '</b>'
+    + '<span class="tsub">' + sub + '</span></div>'
     + '<button data-today="fair" aria-expanded="' + open + '">'
-    + (open ? 'Свернуть' : 'Что нести') + '</button>'
-    + (open ? list : '')
+    + (open ? 'Свернуть' : g ? 'Что нести' : 'Подробности') + '</button>'
+    + (open ? '<div class="tlist">' + body + '</div>' : '')
     + '</div>';
 }
 

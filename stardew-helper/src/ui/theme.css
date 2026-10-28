@@ -235,6 +235,9 @@ button.b{font:inherit;font-size:12px;line-height:inherit;cursor:pointer}
 .granged .gcat{color:var(--faint);font-size:12px}
 .granged .gprice{color:var(--dim);font-size:12.5px;min-width:72px;text-align:right}
 .granged .gpts{min-width:26px;text-align:right;font-weight:650;color:var(--acc)}
+/* подзаголовок внутри раскрытой строки фестиваля */
+.fsub{margin:12px 0 2px;font-size:12px;color:var(--faint);text-transform:lowercase;
+  letter-spacing:.2px}
 
 /* возврат с справочных экранов */
 .backlink{border:0;background:none;color:var(--dim);padding:0 0 14px;font-size:13.5px}
