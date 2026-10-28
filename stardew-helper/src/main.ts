@@ -123,6 +123,7 @@ function trackerChrome(): string {
           + '<div class="msep"></div>'
           + '<button role="menuitem" data-t="plan">План по сезонам</button>'
           + '<button role="menuitem" data-t="cart">🛒 Торговка</button>'
+          + '<button role="menuitem" data-t="guide">💀 Пещера Черепа</button>'
           + (isDesktop ? '<button role="menuitem" data-act="mods">Моды</button>' : '')
           + '<div class="msep"></div>'
           + '<button role="menuitem" data-act="export">Экспорт прогресса</button>'
@@ -149,7 +150,8 @@ function trackerChrome(): string {
       '<button data-t="' + k + '"' + (S.tab === k ? ' class="on" aria-current="page"' : '') + '>'
       + n + '</button>';
     return '<div class="tabs" role="navigation" aria-label="Разделы">'
-      + tab('rooms', 'Комнаты') + tab('day', 'День') + '</div>';
+      + tab('rooms', 'Комнаты') + tab('day', 'День') + tab('cal', 'Календарь')
+      + '</div>';
   };
 
   return '<a class="skip" href="#view">К списку</a><header>'
@@ -175,7 +177,7 @@ function trackerChrome(): string {
     // комнаты, и плашка «Поиск: …» объясняет, почему на экране именно они
     + (S.tab === 'rooms' || S.q
         ? '<div id="filters">' + filterBarHTML() + '</div>'
-        : S.tab === 'day' ? ''
+        : S.tab === 'day' || S.tab === 'cal' ? ''
         // Справочники открываются из меню с любой вкладки, поэтому
         // возвращаемся туда, откуда пришли, а не всегда в комнаты.
         : '<button class="backlink" data-t="' + backTab + '">← Назад'

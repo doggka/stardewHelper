@@ -6,7 +6,8 @@ import { GRANGE_CATS, itemPoints, pickGrange, sellPrice } from '../logic/grange'
 import { ALL, S } from '../state';
 import { bprog, cartToday, dow, done, nextCart, st } from '../logic/status';
 import { norm } from '../logic/search';
-import { covered } from '../logic/have';
+import { belongings, covered } from '../logic/have';
+import { GUIDES } from '../data/guides';
 import { esc, flat } from '../ui/html';
 
 /**
@@ -212,6 +213,32 @@ function cartRow(today: string | null, nx: number | null): string {
        : 'нужен для «' + esc(top.item.bundle.name) + '»')
     + (needed.length > 1 ? ' · ещё нужного: ' + needed.slice(1).map((n) => esc(n.name)).join(', ') : '')
     + '</span></div><button data-act="cartInfo">Весь список</button></div>';
+}
+
+/**
+ * Удачный день — повод спуститься в Пещеру Черепа: удача повышает там
+ * частоту лестниц и шахт. Показываем только когда удача и правда высокая,
+ * иначе строка превратится в фон и её перестанут читать.
+ */
+function skullRow(): string {
+  const b = liveBridge();
+  const v = b && typeof b.luck === 'number' ? b.luck : liveSave()?.luck;
+  if (v === undefined || v === null || v < 0.07) return '';
+
+  const kit = GUIDES[0].kit ?? [];
+  const bel = belongings();
+  const missing = bel
+    ? kit.filter((k) => !bel.items.some((i) => i.name === k.name)).map((k) => k.ru)
+    : [];
+
+  return '<div class="trow urgent"><span class="tico">💀</span><div>'
+    + '<b>Духи довольны — день для Пещеры Черепа</b>'
+    + '<span class="tsub">'
+    + (missing.length
+        ? 'в сундуках не нашлось: ' + esc(missing.join(', '))
+        : 'снаряжение на месте — лестницы, бомбы, еда, тотем')
+    + '</span></div>'
+    + '<button data-t="guide">Как идти</button></div>';
 }
 
 /**
@@ -434,6 +461,11 @@ export function todayHTML(): string {
       'сезон подходит',
       other));
   }
+
+  // 4.5 Удачный день — повод идти в Пещеру Черепа. Удача там повышает
+  //     частоту лестниц и шахт, то есть прямо ускоряет спуск. Это то,
+  //     чего не скажет ни вики, ни поисковик: они не знают твой сейв.
+  rows.push(skullRow());
 
   // 5. Фестиваль. Дата известна заранее, и готовиться надо заранее —
   //    поэтому предупреждаем за несколько дней, а не в то самое утро.

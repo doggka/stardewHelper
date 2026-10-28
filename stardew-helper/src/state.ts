@@ -23,6 +23,8 @@ export interface AppState {
   day: number;
   weather: Weather;
   tab: string;
+  /** какая выжимка открыта на вкладке справочника */
+  guide: string;
   q: string;
   y1guarantee: boolean;
   hideDone: boolean;
@@ -56,7 +58,7 @@ const DROP_ON_UPGRADE = ['filters', 'locFilter', 'hideDone'];
 function defaults(): AppState {
   return {
     screen: 'welcome', saveId: 'manual', save: null, modsSeen: false, launchMode: 'smapi',
-    season: 0, day: 1, weather: 'sun', tab: 'rooms', q: '',
+    season: 0, day: 1, weather: 'sun', tab: 'rooms', guide: 'skull', q: '',
     y1guarantee: false, hideDone: false, locFilter: null,
     openSrc: [], openBundles: [], todayOpen: [], openRooms: [],
     bySave: {},
@@ -65,7 +67,7 @@ function defaults(): AppState {
 
 const SCREENS = ['welcome', 'mods', 'tracker'];
 // rooms и day — вкладки в шапке; plan и cart — справочники из меню «⋯»
-const TABS = ['rooms', 'day', 'plan', 'cart'];
+const TABS = ['rooms', 'day', 'cal', 'plan', 'cart', 'guide'];
 const TODAY_ROWS = ['last', 'crops', 'fish', 'now', 'fair'];
 
 /**
@@ -82,6 +84,7 @@ export function sanitize(s: AppState): void {
   if (SCREENS.indexOf(s.screen) < 0) s.screen = 'tracker';
   if (TABS.indexOf(s.tab) < 0) s.tab = 'rooms';
   if (typeof s.q !== 'string') s.q = '';
+  if (typeof s.guide !== 'string' || !s.guide) s.guide = 'skull';
   // фильтра по статусу больше нет; у старых состояний поле просто удаляем,
   // иначе оно так и будет ездить в localStorage
   delete (s as unknown as Record<string, unknown>).filters;

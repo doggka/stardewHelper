@@ -8,6 +8,8 @@ import { norm } from '../logic/search';
 import { bundleHTML, esc, flat, vaultCardHTML } from '../ui/html';
 import { searchVerdict } from '../ui/searchVerdict';
 import { todayHTML } from './today';
+import { renderCalendar } from './calendar';
+import { renderGuide } from './guide';
 
 /**
  * Предметы, отмеченные прямо сейчас. Остаются в списке зачёркнутыми
@@ -211,8 +213,10 @@ export function renderTrackerBody(): string {
   // План и торговка остались справочниками и открываются из меню «⋯».
   if (S.tab === 'plan') return renderPlan();
   if (S.tab === 'cart') return renderCart();
+  if (S.tab === 'guide') return renderGuide();
   // поиск всегда ищет по узелкам, поэтому показывает комнаты независимо
   // от того, какая вкладка была открыта
   if (S.tab === 'day' && !S.q) return todayHTML();
+  if (S.tab === 'cal' && !S.q) return renderCalendar();
   return renderRooms();
 }
