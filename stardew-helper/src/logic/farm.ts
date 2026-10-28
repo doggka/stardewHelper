@@ -45,13 +45,18 @@ export function needDone(it: Item): boolean {
   const f = farmState();
   if (!need) return true;
   if (!f) return false;
-  if (need.barn && f.barn < need.barn) return false;
-  if (need.coop && f.coop < need.coop) return false;
-  if (need.animal) {
-    const mine = f.animals.filter((a) => need.animal!.indexOf(a.type) >= 0);
-    if (!mine.length) return false;
-    if (need.hearts && !mine.some((a) => a.hearts >= HEARTS_OK)) return false;
+
+  // как и в needHint: есть животное — значит постройка под него уже есть
+  const mine = need.animal
+    ? f.animals.filter((a) => need.animal!.indexOf(a.type) >= 0)
+    : [];
+  if (!mine.length) {
+    if (need.barn && f.barn < need.barn) return false;
+    if (need.coop && f.coop < need.coop) return false;
+    if (need.animal) return false;
+    return true;
   }
+  if (need.hearts && !mine.some((a) => a.hearts >= HEARTS_OK)) return false;
   return true;
 }
 
@@ -60,21 +65,28 @@ export function needHint(it: Item): string | null {
   const f = farmState();
   if (!need || !f) return null;
 
-  if (need.barn && f.barn < need.barn) return 'нужен ' + BARN_RU[need.barn];
-  if (need.coop && f.coop < need.coop) return 'нужен ' + COOP_RU[need.coop];
+  // Животное проверяем первым, постройку — только если животного нет.
+  // Иначе выходит глупость: шерсть дают и овца (элитный хлев), и кролик
+  // (элитный курятник), и при живом кролике мы требовали построить хлев.
+  const mine = need.animal
+    ? f.animals.filter((a) => need.animal!.indexOf(a.type) >= 0)
+    : [];
 
-  if (need.animal) {
-    const mine = f.animals.filter((a) => need.animal!.indexOf(a.type) >= 0);
-    if (!mine.length) {
+  if (!mine.length) {
+    if (need.barn && f.barn < need.barn) return 'нужен ' + BARN_RU[need.barn];
+    if (need.coop && f.coop < need.coop) return 'нужен ' + COOP_RU[need.coop];
+    if (need.animal) {
       // без «нужна/нужен»: род у животных разный, а подставлять его
       // по строке — лишний код ради десяти подсказок
       return 'постройка есть, не хватает: ' + (need.animalRu ?? 'живность');
     }
-    if (need.hearts) {
-      const best = mine.reduce((a, b) => (b.hearts > a.hearts ? b : a));
-      if (best.hearts < HEARTS_OK) {
-        return (need.animalRu ?? 'животному') + ': мало сердечек, гладь и корми каждый день';
-      }
+    return need.then ?? null;
+  }
+
+  if (need.hearts) {
+    const best = mine.reduce((a, b) => (b.hearts > a.hearts ? b : a));
+    if (best.hearts < HEARTS_OK) {
+      return (need.animalRu ?? 'животному') + ': мало сердечек, гладь и корми каждый день';
     }
   }
 

@@ -87,10 +87,18 @@ function readFarm(xml: string): FarmState {
     else barn = Math.max(barn, t);
   }
 
-  // в записи животного дружба идёт перед типом, поэтому берём их парой
+  // В записи животного дружба идёт перед типом, поэтому берём их парой.
+  //
+  // Каждое животное записано в сейве дважды — в постройке и в списке
+  // локации, — и без myID оно считалось вдвое: шесть кур показывались
+  // двенадцатью. Подсказкам это не мешало (им важно «есть хоть одно»),
+  // но числа врали.
   const animals: { type: string; hearts: number }[] = [];
-  const are = /<friendshipTowardFarmer>(\d+)<\/friendshipTowardFarmer>[\s\S]{0,4000}?<type>([^<]*)<\/type><buildingTypeILiveIn>/g;
+  const ids = new Set<string>();
+  const are = /<friendshipTowardFarmer>(\d+)<\/friendshipTowardFarmer>[\s\S]{0,4000}?<type>([^<]*)<\/type><buildingTypeILiveIn>[^<]*<\/buildingTypeILiveIn><myID>(-?\d+)<\/myID>/g;
   while ((m = are.exec(xml))) {
+    if (ids.has(m[3])) continue;
+    ids.add(m[3]);
     animals.push({ type: m[2], hearts: parseInt(m[1], 10) });
   }
 
