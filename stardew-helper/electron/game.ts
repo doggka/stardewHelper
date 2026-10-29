@@ -13,6 +13,17 @@ export const MODS = [
     url: 'https://smapi.io/',
   },
   {
+    key: 'GenericModConfigMenu',
+    folder: 'GenericModConfigMenu',
+    name: 'Generic Mod Config Menu',
+    what: 'экран настроек для остальных модов',
+    // Сам по себе не делает ничего: это настройщик. Нужен, когда у мода
+    // надо что-то поменять — например, выключить автоматизацию плавильни
+    // в Automate. На настройках по умолчанию можно обойтись без него.
+    why: 'без него настройки модов правятся только в файлах; с ним — шестерёнка на заглавном экране',
+    url: 'https://www.nexusmods.com/stardewvalley/mods/5098',
+  },
+  {
     key: 'NPCMapLocations',
     folder: 'NPCMapLocations',
     name: 'NPC Map Locations',
