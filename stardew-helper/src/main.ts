@@ -15,12 +15,34 @@ const shell = document.getElementById('shell') as HTMLElement;
 /** Меню «⋯» и выбор способа запуска. Не в состоянии: открытость
  *  не должна переживать перезапуск. */
 let menuOpen = false;
+/** Вкладки в шапке. Остальное — справочники, открываются поверх них. */
+const MAIN_TABS = ['rooms', 'day', 'cal'];
+
 /**
  * Вкладка, с которой ушли в справочник. В состояние не сохраняем: это
  * про текущий заход, а не про настройку. После перезапуска вернёт
  * в комнаты, и это не хуже любого другого выбора.
  */
 let backTab = 'rooms';
+
+/**
+ * Единственный способ сменить вкладку.
+ *
+ * Запоминание «откуда пришли» висело на обработчике data-t, а кнопка
+ * «Что брать» в строке торговки ходит через data-act и его минует —
+ * с «Дня» возвращало в комнаты. Чинить надо было не одно место, а путь:
+ * иначе та же дыра вылезет в следующем справочнике.
+ */
+function goTab(t: string): void {
+  if (MAIN_TABS.indexOf(t) < 0 && MAIN_TABS.indexOf(S.tab) >= 0) backTab = S.tab;
+  S.tab = t;
+}
+
+const BACK_RU: Record<string, string> = {
+  rooms: 'к комнатам',
+  day: 'к сегодняшнему дню',
+  cal: 'к календарю',
+};
 let playOpen = false;
 
 /** Что нашлось в системе. Спрашиваем один раз при старте, не на каждый рендер. */
@@ -180,8 +202,8 @@ function trackerChrome(): string {
         : S.tab === 'day' || S.tab === 'cal' ? ''
         // Справочники открываются из меню с любой вкладки, поэтому
         // возвращаемся туда, откуда пришли, а не всегда в комнаты.
-        : '<button class="backlink" data-t="' + backTab + '">← Назад'
-          + (backTab === 'day' ? ', к сегодняшнему дню' : ', к комнатам') + '</button>')
+        : '<button class="backlink" data-t="' + backTab + '">← Назад, '
+          + (BACK_RU[backTab] ?? 'к комнатам') + '</button>')
     + '<div id="view" tabindex="-1">' + renderTrackerBody() + '</div></main>'
     + '<div class="foot">Данные с ru.stardewvalleywiki.com · обычный набор узелков '
     + '(не «перемешанные узелки» из настроек фермы) · прогресс хранится локально</div>';
@@ -338,9 +360,7 @@ document.addEventListener('click', (e) => {
     save(); render(); return;
   }
   if (d.t) {
-    // откуда ушли в справочник — туда и вернёт кнопка «Назад»
-    if (d.t === 'plan' || d.t === 'cart') backTab = S.tab === 'day' ? 'day' : 'rooms';
-    S.tab = d.t; menuOpen = false; clearRecent();
+    goTab(d.t); menuOpen = false; clearRecent();
     save(); render(); shell.scrollTop = 0; return;
   }
   if (d.act) { void action(d.act, hit); return; }
@@ -456,7 +476,7 @@ async function action(name: string, el: HTMLElement): Promise<void> {
     render();
     return;
   }
-  if (name === 'cartInfo') { S.tab = 'cart'; save(); render(); shell.scrollTop = 0; return; }
+  if (name === 'cartInfo') { goTab('cart'); save(); render(); shell.scrollTop = 0; return; }
   if (name === 'hideDone') { S.hideDone = !S.hideDone; menuOpen = false; save(); render(); return; }
 
   if (name === 'clearSearch') {

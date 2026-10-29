@@ -44,6 +44,22 @@ export const MODS = [
     why: 'спринклеры, пугала, ульи и скрытые проходы видно сразу',
     url: 'https://www.nexusmods.com/stardewvalley/mods/1691',
   },
+  {
+    key: 'Automate',
+    folder: 'Automate',
+    name: 'Automate',
+    what: 'сундук сам загружает машины и забирает готовое',
+    why: 'когда бочонков и бочек десятки, обход каждые несколько дней съедает больше времени, чем сама игра',
+    url: 'https://www.nexusmods.com/stardewvalley/mods/1063',
+  },
+  {
+    key: 'ChestsAnywhere',
+    folder: 'ChestsAnywhere',
+    name: 'Chests Anywhere',
+    what: 'доступ к любому сундуку откуда угодно',
+    why: 'не бегать на ферму за одним предметом; заодно поиск по всем сундукам сразу',
+    url: 'https://www.nexusmods.com/stardewvalley/mods/518',
+  },
 ] as const;
 
 /** Ищем игру через библиотеки Steam — она далеко не всегда в стандартной папке. */
