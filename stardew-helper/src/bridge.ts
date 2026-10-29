@@ -88,13 +88,19 @@ if (import.meta.env.DEV && location.search.includes('mock') && !window.sdv) {
     },
     game: {
       detect: async () => ({ path: 'F:\\SteamLibrary\\steamapps\\common\\Stardew Valley', smapiInstalled: false, modsPath: null }),
-      mods: async () => [
-        { key: 'SMAPI', name: 'SMAPI', installed: false, version: null },
-        { key: 'NPCMapLocations', name: 'NPC Map Locations', installed: false, version: null },
-        { key: 'UIInfoSuite2', name: 'UI Info Suite 2', installed: true, version: '2.3.7' },
-        { key: 'LookupAnything', name: 'Lookup Anything', installed: false, version: null },
-        { key: 'DataLayers', name: 'Data Layers', installed: false, version: null },
-      ],
+      // в заглушке описания не важны: проверяется раскладка, а не текст
+      mods: async () => ([
+        ['SMAPI', 'SMAPI', false, null],
+        ['NPCMapLocations', 'NPC Map Locations', false, null],
+        ['UIInfoSuite2', 'UI Info Suite 2', true, '2.3.7'],
+        ['LookupAnything', 'Lookup Anything', false, null],
+        ['DataLayers', 'Data Layers', false, null],
+        ['Automate', 'Automate', false, null],
+        ['ChestsAnywhere', 'Chests Anywhere', false, null],
+      ] as const).map(([key, name, installed, version]) => ({
+        key, name, installed, version,
+        what: 'описание из заглушки', why: 'описание из заглушки', url: 'https://smapi.io/',
+      })),
       runBootstrap: async () => ({ started: false, error: 'заглушка' }),
       cancelBootstrap: async () => false,
       bootstrapInConsole: async () => ({ started: false, error: 'заглушка' }),

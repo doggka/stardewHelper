@@ -169,7 +169,8 @@ export function listMods(game: GameInfo): ModInfo[] {
   const out: ModInfo[] = [];
   for (const m of MODS) {
     if (m.key === 'SMAPI') {
-      out.push({ key: m.key, name: m.name, installed: game.smapiInstalled, version: null });
+      out.push({ key: m.key, name: m.name, installed: game.smapiInstalled, version: null,
+        what: m.what, why: m.why, url: m.url });
       continue;
     }
     let installed = false;
@@ -200,7 +201,7 @@ export function listMods(game: GameInfo): ModInfo[] {
         }
       }
     }
-    out.push({ key: m.key, name: m.name, installed, version });
+    out.push({ key: m.key, name: m.name, installed, version, what: m.what, why: m.why, url: m.url });
   }
   return out;
 }

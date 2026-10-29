@@ -1,4 +1,4 @@
-import { guideById } from '../data/guides';
+import { GUIDES, guideById } from '../data/guides';
 import { S } from '../state';
 import { belongings } from '../logic/have';
 import { esc } from '../ui/html';
@@ -9,14 +9,22 @@ import { esc } from '../ui/html';
  * вопрос «готов ли я идти».
  */
 export function renderGuide(): string {
-  const g = guideById(S.guide);
-  if (!g) return '<p class="empty">Выжимка не найдена.</p>';
+  const g = guideById(S.guide) ?? GUIDES[0];
+  if (!g) return '<p class="empty">Выжимок пока нет.</p>';
+
+  // Переключатель появляется, только когда есть из чего выбирать:
+  // ряд из одной кнопки выглядит как недоделка.
+  const pick = GUIDES.length > 1
+    ? '<div class="gpick">' + GUIDES.map((x) =>
+      '<button data-guide="' + x.id + '"' + (x.id === g.id ? ' class="on"' : '') + '>'
+      + esc(x.name) + '</button>').join('') + '</div>'
+    : '';
 
   const blocks = g.blocks.map((b) =>
     '<h3>' + esc(b.title) + '</h3><ul class="note notelist">'
     + b.lines.map((l) => '<li>' + esc(l) + '</li>').join('') + '</ul>').join('');
 
-  return '<div class="panel"><h2 class="room">' + esc(g.name) + '</h2>'
+  return pick + '<div class="panel"><h2 class="room">' + esc(g.name) + '</h2>'
     + '<p class="note">' + esc(g.lead) + '</p>'
     + blocks + kitHTML(g.kit) + '</div>';
 }

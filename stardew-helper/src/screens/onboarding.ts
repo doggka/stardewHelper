@@ -9,34 +9,6 @@ let mods: ModInfo[] = [];
 let gamePath: string | null = null;
 let dropPath = '';
 
-/** Описания модов живут здесь, а не в процессе Electron: это текст для человека. */
-const MOD_TEXT: Record<string, { what: string; why: string; url: string }> = {
-  SMAPI: {
-    what: 'загрузчик модов',
-    why: 'без него не работает ничего из списка ниже',
-    url: 'https://smapi.io/',
-  },
-  NPCMapLocations: {
-    what: 'все жители и игроки на карте, плюс миникарта',
-    why: 'не бегать по городу в поисках нужного NPC',
-    url: 'https://www.nexusmods.com/stardewvalley/mods/239',
-  },
-  UIInfoSuite2: {
-    what: 'подсказки прямо в интерфейсе игры',
-    why: 'иконка торговки пульсирует, когда у неё есть предметы для узелков — прямо под красную капусту',
-    url: 'https://www.nexusmods.com/stardewvalley/mods/43127',
-  },
-  LookupAnything: {
-    what: 'F1 по любому объекту — подробности',
-    why: '«когда созреет», «что этому нравится» без похода на вики',
-    url: 'https://www.nexusmods.com/stardewvalley/mods/541',
-  },
-  DataLayers: {
-    what: 'оверлей зон покрытия',
-    why: 'спринклеры, пугала, ульи и скрытые проходы видно сразу',
-    url: 'https://www.nexusmods.com/stardewvalley/mods/1691',
-  },
-};
 
 export async function screenHTML(): Promise<string> {
   return S.screen === 'mods' ? await modsHTML() : await welcomeHTML();
@@ -102,11 +74,11 @@ async function modsHTML(): Promise<string> {
     dropPath = await bridge.game.dropDir();
   }
 
+  // Описания приходят вместе со списком. Раньше здесь был свой словарь
+  // MOD_TEXT, и мод без записи в нём молча пропускался: добавил Automate
+  // в один список, а в интерфейсе его не оказалось.
   const cards = mods.map((m) => {
-    const t = MOD_TEXT[m.key];
-    if (!t) return '';
-    // data-key, а не позиция: карточки без описания пропускаются,
-    // и сопоставление по индексу разъедется при первом же новом моде
+    const t = { what: m.what, why: m.why, url: m.url };
     return '<div class="modcard" data-key="' + esc(m.key) + '"><div class="mi">'
       + '<div class="mn">' + esc(m.name)
       + (m.installed

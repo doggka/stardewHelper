@@ -216,6 +216,10 @@ export interface ModInfo {
   name: string;
   installed: boolean;
   version: string | null;
+  /** что делает и зачем — приходят оттуда же, где заведён сам мод */
+  what: string;
+  why: string;
+  url: string;
 }
 
 /** Что выгрузил мод-мостик. Null, если мода нет или он ещё не писал. */

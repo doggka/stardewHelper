@@ -15,8 +15,14 @@ const shell = document.getElementById('shell') as HTMLElement;
 /** Меню «⋯» и выбор способа запуска. Не в состоянии: открытость
  *  не должна переживать перезапуск. */
 let menuOpen = false;
-/** Вкладки в шапке. Остальное — справочники, открываются поверх них. */
-const MAIN_TABS = ['rooms', 'day', 'cal'];
+/**
+ * Вкладки в шапке. Остальное — справочники (План, Торговка), они
+ * открываются поверх и возвращают кнопкой «Назад».
+ *
+ * Справочник выжимок вынесен из меню «⋯» во вкладку: из выпадающего
+ * списка его не видно, а он нужен не раз в месяц.
+ */
+const MAIN_TABS = ['rooms', 'day', 'cal', 'guide'];
 
 /**
  * Вкладка, с которой ушли в справочник. В состояние не сохраняем: это
@@ -145,7 +151,6 @@ function trackerChrome(): string {
           + '<div class="msep"></div>'
           + '<button role="menuitem" data-t="plan">План по сезонам</button>'
           + '<button role="menuitem" data-t="cart">🛒 Торговка</button>'
-          + '<button role="menuitem" data-t="guide">💀 Пещера Черепа</button>'
           + (isDesktop ? '<button role="menuitem" data-act="mods">Моды</button>' : '')
           + '<div class="msep"></div>'
           + '<button role="menuitem" data-act="export">Экспорт прогресса</button>'
@@ -173,6 +178,7 @@ function trackerChrome(): string {
       + n + '</button>';
     return '<div class="tabs" role="navigation" aria-label="Разделы">'
       + tab('rooms', 'Комнаты') + tab('day', 'День') + tab('cal', 'Календарь')
+      + tab('guide', 'Справочник')
       + '</div>';
   };
 
@@ -199,7 +205,7 @@ function trackerChrome(): string {
     // комнаты, и плашка «Поиск: …» объясняет, почему на экране именно они
     + (S.tab === 'rooms' || S.q
         ? '<div id="filters">' + filterBarHTML() + '</div>'
-        : S.tab === 'day' || S.tab === 'cal' ? ''
+        : S.tab === 'day' || S.tab === 'cal' || S.tab === 'guide' ? ''
         // Справочники открываются из меню с любой вкладки, поэтому
         // возвращаемся туда, откуда пришли, а не всегда в комнаты.
         : '<button class="backlink" data-t="' + backTab + '">← Назад, '
@@ -302,7 +308,7 @@ document.addEventListener('change', (e) => {
  * свёрнутый узелок разворачивался только при клике в зазор между словами.
  */
 const CLICKABLE = ['win', 'ext', 'f', 'locfilter', 'sugg', 'loc', 'src', 'w',
-  'fold', 'room', 'today', 't', 'act'].map((a) => '[data-' + a + ']').join(',');
+  'fold', 'room', 'today', 'guide', 't', 'act'].map((a) => '[data-' + a + ']').join(',');
 
 document.addEventListener('click', (e) => {
   const el = e.target as HTMLElement;
@@ -358,6 +364,9 @@ document.addEventListener('click', (e) => {
     if (i >= 0) S.todayOpen.splice(i, 1);
     else S.todayOpen.push(d.today);
     save(); render(); return;
+  }
+  if (d.guide) {
+    S.guide = d.guide; save(); render(); return;
   }
   if (d.t) {
     goTab(d.t); menuOpen = false; clearRecent();
